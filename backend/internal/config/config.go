@@ -7,14 +7,16 @@ import (
 )
 
 const (
-	defaultPort     = "8080"
-	defaultTimezone = "Asia/Colombo"
+	defaultPort        = "8080"
+	defaultTimezone    = "Asia/Colombo"
+	defaultFrontendURL = "http://localhost:5173"
 )
 
 // Config holds the settings read from environment variables.
 type Config struct {
-	Port     string
-	Location *time.Location
+	Port        string
+	Location    *time.Location
+	FrontendURL string
 }
 
 // Load reads the configuration from the environment.
@@ -27,8 +29,9 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		Port:     getEnv("PORT", defaultPort),
-		Location: location,
+		Port:        getEnv("PORT", defaultPort),
+		Location:    location,
+		FrontendURL: getEnv("FRONTEND_URL", defaultFrontendURL),
 	}, nil
 }
 

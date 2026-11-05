@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/vidurukalpana/QueueLess/backend/internal/config"
+	"github.com/vidurukalpana/QueueLess/backend/internal/middleware"
 )
 
 const readHeaderTimeout = 5 * time.Second
@@ -30,6 +31,7 @@ func run() error {
 	}
 
 	router := chi.NewRouter()
+	router.Use(middleware.CORS(cfg.FrontendURL))
 	router.Get("/health", health)
 
 	server := &http.Server{
