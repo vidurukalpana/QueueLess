@@ -29,7 +29,8 @@ erDiagram
     tickets {
         uuid id PK
         uuid queue_id FK "references queues.id"
-        int number "unique per queue"
+        date ticket_date "Sri Lanka date, default today"
+        int number "restarts at 1 each day"
         text customer_name
         text status "waiting, called, done, skipped, cancelled"
         uuid token "secret held by the customer"
@@ -49,7 +50,8 @@ erDiagram
 
 ## Constraints
 
-- `UNIQUE(queue_id, number)` on `tickets`.
+- `UNIQUE(queue_id, ticket_date, number)` on `tickets`, so numbers restart at 1 each Sri Lanka day.
+- `waiting` or `called` tickets left from an earlier day become `cancelled`.
 - `CHECK` constraints limit `queues.status` and `tickets.status` to the listed values.
 - Index on `tickets(queue_id, status)`.
 - All times are `timestamptz`, stored through connections running in `Asia/Colombo`.
