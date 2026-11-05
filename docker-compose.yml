@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      TZ: Asia/Colombo
+      PGTZ: Asia/Colombo
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+
+  postgres-test:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_TEST_DB:?set POSTGRES_TEST_DB in .env}
+      TZ: Asia/Colombo
+      PGTZ: Asia/Colombo
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql
+
+volumes:
+  postgres-data:
