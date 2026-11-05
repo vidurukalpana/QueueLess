@@ -1,0 +1,818 @@
+openapi: 3.1.0
+
+info:
+  title: QueueLess API
+  version: 1.0.0
+  description: |
+    REST API for QueueLess, a virtual queue web app.
+
+    - Owners authenticate with a JWT sent as a Bearer token.
+    - Customers have no account; each ticket has a secret token sent in the `X-Ticket-Token` header.
+    - Errors always use the shape `{ "error": "message" }`.
+    - Times use Sri Lanka Standard Time (`Asia/Colombo`, UTC+05:30).
+    - Ticket numbers restart at 1 each Sri Lanka day.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: Health
+    description: Server status
+  - name: Auth
+    description: Owner accounts
+  - name: Queues
+    description: Queue management
+  - name: Owner tickets
+    description: Ticket controls for the owner
+  - name: Customer tickets
+    description: Joining a queue and following a ticket
+  - name: Stats
+    description: Daily queue statistics
+  - name: Realtime
+    description: Live queue updates
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Check the server and database
+      security: []
+      responses:
+        "200":
+          description: Server and database are available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "503":
+          description: Database is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: database unavailable
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      operationId: registerOwner
+      summary: Register an owner
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+      responses:
+        "201":
+          description: Owner created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Owner"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Email is already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: email already registered
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      operationId: loginOwner
+      summary: Log in as an owner
+      description: Rate limited to 5 requests per minute per IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+      responses:
+        "200":
+          description: JWT valid for 24 hours
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Wrong email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: invalid email or password
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentOwner
+      summary: Get the logged-in owner
+      responses:
+        "200":
+          description: Current owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Owner"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/queues:
+    get:
+      tags: [Queues]
+      operationId: listQueues
+      summary: List the owner's queues
+      description: Includes each queue's settings and join code.
+      responses:
+        "200":
+          description: Queues owned by the current owner
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OwnerQueue"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Queues]
+      operationId: createQueue
+      summary: Create a queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQueueRequest"
+      responses:
+        "201":
+          description: Queue created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerQueue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/queues/{id}:
+    parameters:
+      - $ref: "#/components/parameters/QueueId"
+    get:
+      tags: [Queues]
+      operationId: getPublicQueue
+      summary: Get a queue's public details
+      description: Returns only the name and status. Settings and the join code stay private.
+      security: []
+      responses:
+        "200":
+          description: Public queue details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicQueue"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Queues]
+      operationId: updateQueue
+      summary: Update a queue's status or settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateQueueRequest"
+      responses:
+        "200":
+          description: Updated queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerQueue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/queues/{id}/join-code:
+    parameters:
+      - $ref: "#/components/parameters/QueueId"
+    post:
+      tags: [Queues]
+      operationId: regenerateJoinCode
+      summary: Regenerate the join code in the QR code
+      description: The previous code stops working.
+      responses:
+        "200":
+          description: New join code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinCodeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/queues/{id}/tickets:
+    parameters:
+      - $ref: "#/components/parameters/QueueId"
+    get:
+      tags: [Owner tickets]
+      operationId: listQueueTickets
+      summary: List a queue's active tickets
+      responses:
+        "200":
+          description: Waiting and called tickets in number order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OwnerTicket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Customer tickets]
+      operationId: joinQueue
+      summary: Join a queue
+      description: |
+        Rate limited to 10 requests per minute per IP.
+        A valid `code` checks the customer in automatically, because it comes from the shop QR code.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinQueueRequest"
+      responses:
+        "201":
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinQueueResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          description: Remote joins are off and the code is missing or wrong
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: join at the shop
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Queue is not open or is full
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                notOpen:
+                  value:
+                    error: queue is not open
+                full:
+                  value:
+                    error: queue is full
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/queues/{id}/next:
+    parameters:
+      - $ref: "#/components/parameters/QueueId"
+    post:
+      tags: [Owner tickets]
+      operationId: callNextTicket
+      summary: Call the next ticket
+      description: |
+        In one transaction, the current called ticket becomes done, then the lowest-numbered
+        waiting ticket becomes called.
+      responses:
+        "200":
+          description: The newly called ticket, or null if nobody is waiting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CallNextResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/queues/{id}/stats:
+    parameters:
+      - $ref: "#/components/parameters/QueueId"
+    get:
+      tags: [Stats]
+      operationId: getQueueStats
+      summary: Get a queue's stats for one day
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Sri Lanka date. Defaults to today in `Asia/Colombo`.
+          schema:
+            type: string
+            format: date
+          example: "2026-11-05"
+      responses:
+        "200":
+          description: Stats for the date
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueStats"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/tickets/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+    get:
+      tags: [Customer tickets]
+      operationId: getTicket
+      summary: Get a ticket's live status
+      security:
+        - ticketToken: []
+      responses:
+        "200":
+          description: Ticket status with wait estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketStatusResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Customer tickets]
+      operationId: cancelTicket
+      summary: Cancel a ticket
+      security:
+        - ticketToken: []
+      responses:
+        "204":
+          description: Ticket cancelled
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/tickets/{id}/skip:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+    post:
+      tags: [Owner tickets]
+      operationId: skipTicket
+      summary: Skip a waiting or called ticket
+      responses:
+        "200":
+          description: Updated ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerTicket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/TicketConflict"
+
+  /api/tickets/{id}/done:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+    post:
+      tags: [Owner tickets]
+      operationId: completeTicket
+      summary: Mark a called ticket as done
+      responses:
+        "200":
+          description: Updated ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerTicket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/TicketConflict"
+
+  /api/tickets/{id}/checkin:
+    parameters:
+      - $ref: "#/components/parameters/TicketId"
+    post:
+      tags: [Customer tickets]
+      operationId: checkInTicket
+      summary: Check in on arrival
+      description: Idempotent. Repeat calls return 200 without changing the original time.
+      security:
+        - ticketToken: []
+      responses:
+        "200":
+          description: Customer is checked in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckInResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /ws/queues/{id}:
+    parameters:
+      - $ref: "#/components/parameters/QueueId"
+    get:
+      tags: [Realtime]
+      operationId: connectQueueSocket
+      summary: Open a WebSocket for live queue updates
+      description: |
+        Upgrades the connection to a WebSocket. Only the frontend origin is accepted.
+        The server sends a `QueueUpdated` message (see `components.schemas`) after every queue change.
+        Messages contain no customer names.
+      security: []
+      responses:
+        "101":
+          description: Switching to the WebSocket protocol
+        "403":
+          description: Origin is not allowed
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Owner JWT from `POST /api/auth/login`.
+    ticketToken:
+      type: apiKey
+      in: header
+      name: X-Ticket-Token
+      description: Secret ticket token from `POST /api/queues/{id}/tickets`.
+
+  parameters:
+    QueueId:
+      name: id
+      in: path
+      required: true
+      description: Queue ID
+      schema:
+        type: string
+        format: uuid
+    TicketId:
+      name: id
+      in: path
+      required: true
+      description: Ticket ID
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: invalid input
+    Unauthorized:
+      description: Missing or invalid JWT
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: unauthorized
+    NotFound:
+      description: Not found, not owned by this owner, or wrong ticket token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: not found
+    TicketConflict:
+      description: The ticket's current status does not allow this change
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: ticket status does not allow this action
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: too many requests
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+
+    Credentials:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    Owner:
+      type: object
+      required: [id, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+
+    LoginResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: JWT signed with HS256
+
+    QueueStatus:
+      type: string
+      enum: [open, paused, closed]
+
+    TicketStatus:
+      type: string
+      enum: [waiting, called, done, skipped, cancelled]
+
+    CreateQueueRequest:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+
+    UpdateQueueRequest:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        status:
+          $ref: "#/components/schemas/QueueStatus"
+        allowRemoteJoin:
+          type: boolean
+        maxWaiting:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 500
+          description: Null means no limit.
+
+    PublicQueue:
+      type: object
+      required: [name, status]
+      properties:
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/QueueStatus"
+
+    OwnerQueue:
+      type: object
+      required:
+        - id
+        - name
+        - status
+        - avgServiceMinutes
+        - allowRemoteJoin
+        - joinCode
+        - maxWaiting
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/QueueStatus"
+        avgServiceMinutes:
+          type: integer
+          default: 10
+        allowRemoteJoin:
+          type: boolean
+          default: true
+        joinCode:
+          type: string
+          description: Secret code inside the shop QR code
+        maxWaiting:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 500
+          description: Null means no limit.
+        createdAt:
+          type: string
+          format: date-time
+
+    JoinCodeResponse:
+      type: object
+      required: [joinCode]
+      properties:
+        joinCode:
+          type: string
+
+    OwnerTicket:
+      type: object
+      required: [id, number, customerName, status, checkedIn, createdAt, calledAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 1
+        customerName:
+          type: string
+        status:
+          $ref: "#/components/schemas/TicketStatus"
+        checkedIn:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        calledAt:
+          type: [string, "null"]
+          format: date-time
+
+    CallNextResponse:
+      type: object
+      required: [ticket]
+      properties:
+        ticket:
+          oneOf:
+            - $ref: "#/components/schemas/OwnerTicket"
+            - type: "null"
+
+    JoinQueueRequest:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+        code:
+          type: string
+          description: Join code from the shop QR code
+
+    JoinQueueResponse:
+      type: object
+      required: [ticketId, number, token]
+      properties:
+        ticketId:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 1
+        token:
+          type: string
+          format: uuid
+          description: Secret ticket token, stored by the customer's browser
+
+    TicketStatusResponse:
+      type: object
+      required: [number, status, position, etaMinutes, queueName, queueId, checkedIn]
+      properties:
+        number:
+          type: integer
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/TicketStatus"
+        position:
+          type: [integer, "null"]
+          minimum: 0
+          description: Waiting tickets ahead, not counting the called ticket. 0 means next. Null unless waiting.
+        etaMinutes:
+          type: [integer, "null"]
+          minimum: 0
+          description: Estimated wait. Null unless waiting.
+        queueName:
+          type: string
+        queueId:
+          type: string
+          format: uuid
+          description: Used to open the queue WebSocket
+        checkedIn:
+          type: boolean
+
+    CheckInResponse:
+      type: object
+      required: [checkedInAt]
+      properties:
+        checkedInAt:
+          type: string
+          format: date-time
+
+    QueueStats:
+      type: object
+      required: [served, skipped, avgWaitMinutes, avgServiceMinutes]
+      properties:
+        served:
+          type: integer
+          minimum: 0
+        skipped:
+          type: integer
+          minimum: 0
+        avgWaitMinutes:
+          type: [number, "null"]
+          description: Null when no ticket was called that day.
+        avgServiceMinutes:
+          type: [number, "null"]
+          description: Null when no ticket was completed that day.
+
+    QueueUpdated:
+      type: object
+      description: WebSocket message sent after every queue change
+      required: [type, queueId, status, nowServing, waiting]
+      properties:
+        type:
+          type: string
+          const: queue_updated
+        queueId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/QueueStatus"
+        nowServing:
+          type: [integer, "null"]
+          description: Number of the called ticket. Null when nobody is called.
+        waiting:
+          type: array
+          items:
+            type: object
+            required: [ticketId, number, checkedIn]
+            properties:
+              ticketId:
+                type: string
+                format: uuid
+              number:
+                type: integer
+                minimum: 1
+              checkedIn:
+                type: boolean
+
+security:
+  - bearerAuth: []
