@@ -1,7 +1,14 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router'
-import { ApiError, apiGet, apiPost, getErrorMessage } from '../api/client'
+import { Navigate, useNavigate, useParams } from 'react-router'
+import {
+  ApiError,
+  apiGet,
+  apiPost,
+  getErrorMessage,
+  getTicket,
+} from '../api/client'
+import { getSavedTicket, saveTicket } from '../api/ticketStorage'
 import type {
   JoinQueueRequest,
   JoinQueueResponse,
@@ -23,10 +30,17 @@ export function JoinPage() {
   const join = useMutation({
     mutationFn: (input: JoinQueueRequest) =>
       apiPost<JoinQueueResponse>(`/api/queues/${queueId}/tickets`, input),
-    onSuccess: (ticket) =>
-      navigate(`/ticket/${ticket.ticketId}`, {
-        state: { token: ticket.token },
-      }),
+    onSuccess: ({ ticketId, token }) => {
+      saveTicket(queueId ?? '', { ticketId, token })
+      navigate(`/ticket/${ticketId}`)
+    },
+  })
+  const saved = getSavedTicket(queueId ?? '')
+  const savedTicket = useQuery({
+    queryKey: ['ticket', saved?.ticketId],
+    queryFn: () => getTicket(saved?.ticketId ?? '', saved?.token ?? ''),
+    enabled: Boolean(saved),
+    retry: false,
   })
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -34,14 +48,20 @@ export function JoinPage() {
     join.mutate({ name })
   }
 
+  const status = savedTicket.data?.status
+  if (saved && (status === 'waiting' || status === 'called')) {
+    return <Navigate to={`/ticket/${saved.ticketId}`} replace />
+  }
+
   const isMissing =
     queue.error instanceof ApiError && queue.error.status === 404
+  const isCheckingTicket = saved && savedTicket.isPending
 
   return (
     <main className="mx-auto flex max-w-sm flex-col gap-4 px-5 pt-8">
       <p className="text-center text-lg font-bold">QueueLess</p>
 
-      {queue.isPending && (
+      {(queue.isPending || isCheckingTicket) && (
         <p className="text-center text-gray-600">Loading queue…</p>
       )}
       {isMissing && (
@@ -53,7 +73,7 @@ export function JoinPage() {
         </p>
       )}
 
-      {queue.data && (
+      {queue.data && !isCheckingTicket && (
         <>
           <div className="mt-3 text-center">
             <h1 className="mb-1 text-2xl font-bold">{queue.data.name}</h1>

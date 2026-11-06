@@ -1,6 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
-import { useLocation, useParams } from 'react-router'
-import { ApiError, getErrorMessage, getTicket } from '../api/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate, useParams } from 'react-router'
+import {
+  ApiError,
+  cancelTicket,
+  getErrorMessage,
+  getTicket,
+} from '../api/client'
+import { clearSavedTicket, findTicketToken } from '../api/ticketStorage'
 import type { TicketStatus } from '../api/types'
 
 const POLL_INTERVAL_MS = 10_000
@@ -13,15 +19,11 @@ const statusLabels: Record<TicketStatus, string> = {
   cancelled: 'Cancelled',
 }
 
-interface TicketLocationState {
-  token?: string
-}
-
 export function TicketPage() {
   const { ticketId } = useParams()
-  const location = useLocation()
-  const state = location.state as TicketLocationState | null
-  const token = state?.token
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const token = findTicketToken(ticketId ?? '')
   const ticket = useQuery({
     queryKey: ['ticket', ticketId],
     queryFn: () => getTicket(ticketId ?? '', token ?? ''),
@@ -30,6 +32,18 @@ export function TicketPage() {
     retry: false,
   })
 
+  const cancel = useMutation({
+    mutationFn: () => cancelTicket(ticketId ?? '', token ?? ''),
+    onSuccess: () => {
+      const queueId = ticket.data?.queueId ?? ''
+      clearSavedTicket(queueId)
+      queryClient.removeQueries({ queryKey: ['ticket', ticketId] })
+      navigate(`/q/${queueId}`, { replace: true })
+    },
+  })
+
+  const isActive =
+    ticket.data?.status === 'waiting' || ticket.data?.status === 'called'
   const isMissing =
     !token || (ticket.error instanceof ApiError && ticket.error.status === 404)
 
@@ -70,6 +84,22 @@ export function TicketPage() {
                 <p className="text-sm text-gray-600">estimated wait</p>
               </div>
             </div>
+          )}
+
+          {cancel.isError && (
+            <p role="alert" className="text-center">
+              {getErrorMessage(cancel.error)}
+            </p>
+          )}
+          {isActive && (
+            <button
+              type="button"
+              disabled={cancel.isPending}
+              onClick={() => cancel.mutate()}
+              className="mt-4 w-full rounded-md border-2 border-gray-900 px-4 py-2 font-bold disabled:opacity-60"
+            >
+              Cancel ticket
+            </button>
           )}
         </>
       )}
