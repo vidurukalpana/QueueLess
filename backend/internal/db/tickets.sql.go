@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const averageServiceMinutesToday = `-- name: AverageServiceMinutesToday :one
@@ -112,6 +113,43 @@ func (q *Queries) GetFirstWaitingTicket(ctx context.Context, queueID uuid.UUID) 
 		&i.CreatedAt,
 		&i.CalledAt,
 		&i.DoneAt,
+	)
+	return i, err
+}
+
+const getQueueStats = `-- name: GetQueueStats :one
+SELECT COUNT(*) FILTER (WHERE status = 'done')::int AS served,
+       COUNT(*) FILTER (WHERE status = 'skipped')::int AS skipped,
+       COUNT(*) FILTER (WHERE called_at IS NOT NULL)::int AS called,
+       COALESCE(AVG(EXTRACT(EPOCH FROM called_at - created_at) / 60), 0)::float8 AS avg_wait_minutes,
+       COALESCE(AVG(EXTRACT(EPOCH FROM done_at - called_at) / 60) FILTER (WHERE status = 'done'), 0)::float8 AS avg_service_minutes
+FROM tickets
+WHERE queue_id = $1
+  AND created_at::date = $2::date
+`
+
+type GetQueueStatsParams struct {
+	QueueID   uuid.UUID
+	StatsDate pgtype.Date
+}
+
+type GetQueueStatsRow struct {
+	Served            int32
+	Skipped           int32
+	Called            int32
+	AvgWaitMinutes    float64
+	AvgServiceMinutes float64
+}
+
+func (q *Queries) GetQueueStats(ctx context.Context, arg GetQueueStatsParams) (GetQueueStatsRow, error) {
+	row := q.db.QueryRow(ctx, getQueueStats, arg.QueueID, arg.StatsDate)
+	var i GetQueueStatsRow
+	err := row.Scan(
+		&i.Served,
+		&i.Skipped,
+		&i.Called,
+		&i.AvgWaitMinutes,
+		&i.AvgServiceMinutes,
 	)
 	return i, err
 }

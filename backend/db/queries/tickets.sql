@@ -56,3 +56,13 @@ WHERE queue_id = $1
   AND ticket_date = CURRENT_DATE
   AND status = 'done'
   AND called_at IS NOT NULL;
+
+-- name: GetQueueStats :one
+SELECT COUNT(*) FILTER (WHERE status = 'done')::int AS served,
+       COUNT(*) FILTER (WHERE status = 'skipped')::int AS skipped,
+       COUNT(*) FILTER (WHERE called_at IS NOT NULL)::int AS called,
+       COALESCE(AVG(EXTRACT(EPOCH FROM called_at - created_at) / 60), 0)::float8 AS avg_wait_minutes,
+       COALESCE(AVG(EXTRACT(EPOCH FROM done_at - called_at) / 60) FILTER (WHERE status = 'done'), 0)::float8 AS avg_service_minutes
+FROM tickets
+WHERE queue_id = sqlc.arg(queue_id)
+  AND created_at::date = sqlc.arg(stats_date)::date;
