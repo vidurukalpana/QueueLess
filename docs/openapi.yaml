@@ -446,6 +446,8 @@ paths:
                 $ref: "#/components/schemas/CheckInResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/TicketConflict"
 
   /ws/queues/{id}:
     parameters:

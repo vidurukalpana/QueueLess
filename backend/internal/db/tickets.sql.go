@@ -41,6 +41,32 @@ func (q *Queries) CancelStaleTickets(ctx context.Context, queueID uuid.UUID) err
 	return err
 }
 
+const checkInTicket = `-- name: CheckInTicket :one
+UPDATE tickets
+SET checked_in_at = COALESCE(checked_in_at, now())
+WHERE id = $1
+RETURNING id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at, checked_in_at
+`
+
+func (q *Queries) CheckInTicket(ctx context.Context, id uuid.UUID) (Ticket, error) {
+	row := q.db.QueryRow(ctx, checkInTicket, id)
+	var i Ticket
+	err := row.Scan(
+		&i.ID,
+		&i.QueueID,
+		&i.TicketDate,
+		&i.Number,
+		&i.CustomerName,
+		&i.Status,
+		&i.Token,
+		&i.CreatedAt,
+		&i.CalledAt,
+		&i.DoneAt,
+		&i.CheckedInAt,
+	)
+	return i, err
+}
+
 const completeCalledTickets = `-- name: CompleteCalledTickets :exec
 UPDATE tickets
 SET status = 'done',

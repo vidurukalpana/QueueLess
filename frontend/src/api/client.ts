@@ -1,4 +1,8 @@
-import type { ErrorResponse, TicketStatusResponse } from './types'
+import type {
+  CheckInResponse,
+  ErrorResponse,
+  TicketStatusResponse,
+} from './types'
 
 const baseUrl: string = import.meta.env.VITE_API_URL
 const NO_CONTENT = 204
@@ -81,6 +85,16 @@ export function getTicket(
 export function cancelTicket(ticketId: string, token: string): Promise<void> {
   return request<void>(`/api/tickets/${ticketId}`, {
     method: 'DELETE',
+    headers: { 'X-Ticket-Token': token },
+  })
+}
+
+export function checkInTicket(
+  ticketId: string,
+  token: string,
+): Promise<CheckInResponse> {
+  return request<CheckInResponse>(`/api/tickets/${ticketId}/checkin`, {
+    method: 'POST',
     headers: { 'X-Ticket-Token': token },
   })
 }

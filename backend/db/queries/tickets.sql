@@ -78,3 +78,9 @@ SELECT COUNT(*) FILTER (WHERE status = 'done')::int AS served,
 FROM tickets
 WHERE queue_id = sqlc.arg(queue_id)
   AND created_at::date = sqlc.arg(stats_date)::date;
+
+-- name: CheckInTicket :one
+UPDATE tickets
+SET checked_in_at = COALESCE(checked_in_at, now())
+WHERE id = $1
+RETURNING *;

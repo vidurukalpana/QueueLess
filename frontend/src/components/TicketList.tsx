@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, getErrorMessage } from '../api/client'
 import type { CallNextResponse, OwnerTicket } from '../api/types'
+import { ArrivalBadge } from './ArrivalBadge'
 import { ReconnectingBanner } from './ReconnectingBanner'
 import { useAuth } from '../hooks/useAuth'
 import { useQueueSocket } from '../hooks/useQueueSocket'
@@ -92,6 +93,7 @@ export function TicketList({ queueId }: TicketListProps) {
               <th className="p-2">TICKET</th>
               <th className="p-2">NAME</th>
               <th className="p-2">STATUS</th>
+              <th className="p-2">ARRIVAL</th>
               <th className="p-2">ACTIONS</th>
             </tr>
           </thead>
@@ -104,6 +106,9 @@ export function TicketList({ queueId }: TicketListProps) {
                 <td className="p-2 font-bold">#{ticket.number}</td>
                 <td className="p-2">{ticket.customerName}</td>
                 <td className="p-2 capitalize">{ticket.status}</td>
+                <td className="p-2">
+                  <ArrivalBadge checkedIn={ticket.checkedIn} />
+                </td>
                 <td className="flex gap-2 p-2">
                   <button
                     type="button"

@@ -26,8 +26,9 @@ func NewNotifier(queries *db.Queries, hub *ws.Hub) *Notifier {
 }
 
 type waitingTicket struct {
-	TicketID uuid.UUID `json:"ticketId"`
-	Number   int32     `json:"number"`
+	TicketID  uuid.UUID `json:"ticketId"`
+	Number    int32     `json:"number"`
+	CheckedIn bool      `json:"checkedIn"`
 }
 
 // queueUpdated leaves out customer names because every visitor receives it.
@@ -76,7 +77,11 @@ func (n *Notifier) snapshot(ctx context.Context, queueID uuid.UUID) ([]byte, err
 			message.NowServing = &number
 			continue
 		}
-		message.Waiting = append(message.Waiting, waitingTicket{TicketID: ticket.ID, Number: ticket.Number})
+		message.Waiting = append(message.Waiting, waitingTicket{
+			TicketID:  ticket.ID,
+			Number:    ticket.Number,
+			CheckedIn: ticket.CheckedInAt != nil,
+		})
 	}
 
 	payload, err := json.Marshal(message)

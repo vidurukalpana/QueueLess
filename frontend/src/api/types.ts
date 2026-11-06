@@ -55,6 +55,7 @@ export interface OwnerTicket {
   number: number
   customerName: string
   status: TicketStatus
+  checkedIn: boolean
   createdAt: string
   calledAt: string | null
 }
@@ -86,11 +87,17 @@ export interface TicketStatusResponse {
   etaMinutes: number | null
   queueName: string
   queueId: string
+  checkedIn: boolean
+}
+
+export interface CheckInResponse {
+  checkedInAt: string
 }
 
 export interface WaitingTicket {
   ticketId: string
   number: number
+  checkedIn: boolean
 }
 
 export interface QueueUpdatedMessage {
