@@ -14,6 +14,7 @@ import (
 	"github.com/vidurukalpana/QueueLess/backend/internal/auth"
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
 	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
+	"github.com/vidurukalpana/QueueLess/backend/internal/middleware"
 )
 
 const (
@@ -126,6 +127,28 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, loginResponse{Token: token})
+}
+
+// Me returns the logged-in owner.
+func (a *Auth) Me(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserID(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	user, err := a.queries.GetUserByID(r.Context(), userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if err != nil {
+		log.Printf("me: get user: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, ownerResponse{ID: user.ID, Email: user.Email})
 }
 
 func normalizeEmail(email string) string {

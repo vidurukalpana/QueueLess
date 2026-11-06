@@ -8,11 +8,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/vidurukalpana/QueueLess/backend/internal/auth"
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
+	"github.com/vidurukalpana/QueueLess/backend/internal/middleware"
 )
 
 const testJWTSecret = "test-secret"
@@ -107,4 +110,34 @@ func TestLoginRejectsInvalidCredentials(t *testing.T) {
 			assert.JSONEq(t, `{"error":"invalid email or password"}`, response.Body.String())
 		})
 	}
+}
+
+func me(handler *Auth, token string) *httptest.ResponseRecorder {
+	request := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	recorder := httptest.NewRecorder()
+	middleware.Authenticate(testJWTSecret)(http.HandlerFunc(handler.Me)).ServeHTTP(recorder, request)
+	return recorder
+}
+
+func TestMeReturnsLoggedInOwner(t *testing.T) {
+	handler := NewAuth(db.New(newTestPool(t)), testJWTSecret)
+	require.Equal(t, http.StatusCreated, register(handler, `{"email":"owner@example.com","password":"password123"}`).Code)
+	var session loginResponse
+	require.NoError(t, json.Unmarshal(login(handler, `{"email":"owner@example.com","password":"password123"}`).Body.Bytes(), &session))
+
+	response := me(handler, session.Token)
+
+	require.Equal(t, http.StatusOK, response.Code)
+	var owner ownerResponse
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &owner))
+	assert.Equal(t, "owner@example.com", owner.Email)
+}
+
+func TestMeRejectsDeletedOwner(t *testing.T) {
+	handler := NewAuth(db.New(newTestPool(t)), testJWTSecret)
+	token, err := auth.SignToken(uuid.New(), testJWTSecret)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusUnauthorized, me(handler, token).Code)
 }

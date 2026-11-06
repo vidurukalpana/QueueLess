@@ -25,3 +25,20 @@ func SignToken(userID uuid.UUID, secret string) (string, error) {
 	}
 	return token, nil
 }
+
+// VerifyToken checks a JWT, then returns the owner it identifies.
+func VerifyToken(signed, secret string) (uuid.UUID, error) {
+	var claims jwt.RegisteredClaims
+	_, err := jwt.ParseWithClaims(signed, &claims, func(*jwt.Token) (any, error) {
+		return []byte(secret), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}), jwt.WithExpirationRequired())
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parse token: %w", err)
+	}
+
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parse token subject: %w", err)
+	}
+	return userID, nil
+}
