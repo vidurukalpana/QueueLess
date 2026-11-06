@@ -12,6 +12,11 @@ ORDER BY created_at DESC;
 SELECT * FROM queues
 WHERE id = $1;
 
+-- name: GetQueueForUpdate :one
+SELECT * FROM queues
+WHERE id = $1
+FOR UPDATE;
+
 -- name: UpdateQueueStatus :one
 UPDATE queues
 SET status = $2

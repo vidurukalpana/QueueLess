@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import {
   createContext,
   useContext,
@@ -21,6 +22,7 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const queryClient = useQueryClient()
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY))
 
   const value = useMemo(
@@ -33,9 +35,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       logout: () => {
         localStorage.removeItem(TOKEN_KEY)
         setToken(null)
+        queryClient.clear()
       },
     }),
-    [token],
+    [token, queryClient],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
