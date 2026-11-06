@@ -77,8 +77,9 @@ func (c *Client) writePump() {
 				return
 			}
 			if !ok {
-				// The connection is already closed when the browser left first.
-				if err := c.conn.WriteMessage(websocket.CloseMessage, nil); err != nil && !errors.Is(err, net.ErrClosed) {
+				// Both errors mean the browser left first.
+				err := c.conn.WriteMessage(websocket.CloseMessage, nil)
+				if err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, websocket.ErrCloseSent) {
 					log.Printf("write websocket close: %v", err)
 				}
 				return

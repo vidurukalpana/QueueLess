@@ -57,8 +57,9 @@ func run() error {
 
 	queries := db.New(pool)
 	authHandler := handlers.NewAuth(queries, cfg.JWTSecret)
-	queueHandler := handlers.NewQueues(queries, cfg.Location)
-	ticketHandler := handlers.NewTickets(pool, queries, cfg.Location)
+	notifier := handlers.NewNotifier(queries, hub)
+	queueHandler := handlers.NewQueues(queries, cfg.Location, notifier)
+	ticketHandler := handlers.NewTickets(pool, queries, cfg.Location, notifier)
 	socketHandler := handlers.NewSocket(queries, hub)
 	router.Post("/api/auth/register", authHandler.Register)
 	router.Post("/api/auth/login", authHandler.Login)

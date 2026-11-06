@@ -36,11 +36,12 @@ type Tickets struct {
 	pool     *pgxpool.Pool
 	queries  *db.Queries
 	location *time.Location
+	notifier *Notifier
 }
 
 // NewTickets creates the ticket handlers.
-func NewTickets(pool *pgxpool.Pool, queries *db.Queries, location *time.Location) *Tickets {
-	return &Tickets{pool: pool, queries: queries, location: location}
+func NewTickets(pool *pgxpool.Pool, queries *db.Queries, location *time.Location, notifier *Notifier) *Tickets {
+	return &Tickets{pool: pool, queries: queries, location: location, notifier: notifier}
 }
 
 type ownerTicketResponse struct {
@@ -113,6 +114,8 @@ func (t *Tickets) CallNext(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	t.notifier.QueueChanged(r.Context(), queueID)
+
 	if called == nil {
 		httpx.WriteJSON(w, http.StatusOK, callNextResponse{})
 		return
@@ -182,6 +185,7 @@ func (t *Tickets) Join(w http.ResponseWriter, r *http.Request) {
 		log.Printf("join queue: %v", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
 	default:
+		t.notifier.QueueChanged(r.Context(), queueID)
 		httpx.WriteJSON(w, http.StatusCreated, joinQueueResponse{TicketID: ticket.ID, Number: ticket.Number, Token: ticket.Token})
 	}
 }
@@ -284,6 +288,7 @@ func (t *Tickets) changeStatus(w http.ResponseWriter, r *http.Request, status st
 		return
 	}
 
+	t.notifier.QueueChanged(r.Context(), ticket.QueueID)
 	httpx.WriteJSON(w, http.StatusOK, t.toResponse(updated))
 }
 

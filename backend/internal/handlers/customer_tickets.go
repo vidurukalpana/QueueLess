@@ -107,6 +107,7 @@ func (t *Tickets) Cancel(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
 			return
 		}
+		t.notifier.QueueChanged(r.Context(), ticket.QueueID)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
