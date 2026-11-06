@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -33,6 +34,9 @@ func (s *Socket) Connect(w http.ResponseWriter, r *http.Request) {
 	_, err := s.queries.GetQueue(r.Context(), queueID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	if errors.Is(err, context.Canceled) {
 		return
 	}
 	if err != nil {

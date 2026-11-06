@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, getErrorMessage } from '../api/client'
 import type { CallNextResponse, OwnerTicket } from '../api/types'
 import { useAuth } from '../hooks/useAuth'
+import { useQueueSocket } from '../hooks/useQueueSocket'
 
 const smallButton =
   'rounded-md border-2 border-gray-900 px-3 py-0.5 text-sm font-bold disabled:opacity-60'
@@ -14,6 +15,7 @@ export function TicketList({ queueId }: TicketListProps) {
   const { token } = useAuth()
   const queryClient = useQueryClient()
   const queryKey = ['tickets', queueId]
+  useQueueSocket(queueId)
   const tickets = useQuery({
     queryKey,
     queryFn: () =>

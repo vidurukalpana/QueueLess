@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import {
   ApiError,
@@ -8,8 +9,9 @@ import {
 } from '../api/client'
 import { clearSavedTicket, findTicketToken } from '../api/ticketStorage'
 import type { TicketStatus } from '../api/types'
+import { useQueueSocket } from '../hooks/useQueueSocket'
 
-const POLL_INTERVAL_MS = 10_000
+const TURN_VIBRATION_MS = [200, 100, 200]
 
 const statusLabels: Record<TicketStatus, string> = {
   waiting: 'Waiting',
@@ -28,9 +30,21 @@ export function TicketPage() {
     queryKey: ['ticket', ticketId],
     queryFn: () => getTicket(ticketId ?? '', token ?? ''),
     enabled: Boolean(ticketId && token),
-    refetchInterval: POLL_INTERVAL_MS,
     retry: false,
   })
+
+  const status = ticket.data?.status
+  const previousStatus = useRef(status)
+
+  useQueueSocket(ticket.data?.queueId)
+
+  useEffect(() => {
+    const wasWaiting = previousStatus.current === 'waiting'
+    previousStatus.current = status
+    if (wasWaiting && status === 'called' && 'vibrate' in navigator) {
+      navigator.vibrate(TURN_VIBRATION_MS)
+    }
+  }, [status])
 
   const cancel = useMutation({
     mutationFn: () => cancelTicket(ticketId ?? '', token ?? ''),
@@ -42,8 +56,7 @@ export function TicketPage() {
     },
   })
 
-  const isActive =
-    ticket.data?.status === 'waiting' || ticket.data?.status === 'called'
+  const isActive = status === 'waiting' || status === 'called'
   const isMissing =
     !token || (ticket.error instanceof ApiError && ticket.error.status === 404)
 
@@ -66,9 +79,17 @@ export function TicketPage() {
             {ticket.data.queueName}
           </p>
           <div className="text-center">
-            <p className="text-sm text-gray-600">Your ticket</p>
+            {status === 'called' ? (
+              <p className="text-4xl font-bold">Your turn!</p>
+            ) : (
+              <p className="text-sm text-gray-600">Your ticket</p>
+            )}
             <p className="text-7xl font-bold">#{ticket.data.number}</p>
-            <p className="mt-2 font-bold">{statusLabels[ticket.data.status]}</p>
+            <p className="mt-2 font-bold">
+              {status === 'called'
+                ? 'Please go to the counter now.'
+                : statusLabels[ticket.data.status]}
+            </p>
           </div>
 
           {ticket.data.position !== null && ticket.data.etaMinutes !== null && (
