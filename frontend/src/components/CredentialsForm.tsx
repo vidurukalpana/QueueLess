@@ -41,7 +41,7 @@ export function CredentialsForm({
   }
 
   return (
-    <main className="mx-auto grid min-h-[calc(100dvh-4.5rem)] w-full max-w-6xl items-center gap-8 px-4 py-6 lg:grid-cols-2 lg:gap-12">
+    <main className="mx-auto grid min-h-dvh w-full max-w-6xl items-center gap-8 px-4 py-6 lg:grid-cols-2 lg:gap-12">
       <section className="hero hidden rounded-3xl p-10 shadow-xl shadow-orange-900/20 lg:block">
         <div className="relative">
           <Logo light />

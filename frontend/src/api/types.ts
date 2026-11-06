@@ -2,10 +2,6 @@ export interface ErrorResponse {
   error: string
 }
 
-export interface HealthResponse {
-  status: string
-}
-
 export interface Credentials {
   email: string
   password: string
