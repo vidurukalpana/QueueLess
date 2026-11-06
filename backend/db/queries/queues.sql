@@ -17,8 +17,15 @@ SELECT * FROM queues
 WHERE id = $1
 FOR UPDATE;
 
--- name: UpdateQueueStatus :one
+-- name: UpdateQueue :one
 UPDATE queues
-SET status = $2
+SET status = COALESCE(sqlc.narg(status), status),
+    allow_remote_join = COALESCE(sqlc.narg(allow_remote_join), allow_remote_join)
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
+-- name: UpdateJoinCode :one
+UPDATE queues
+SET join_code = $2
 WHERE id = $1
 RETURNING *;

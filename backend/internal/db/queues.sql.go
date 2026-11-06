@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createQueue = `-- name: CreateQueue :one
@@ -121,20 +122,51 @@ func (q *Queries) ListQueuesByOwner(ctx context.Context, ownerID uuid.UUID) ([]Q
 	return items, nil
 }
 
-const updateQueueStatus = `-- name: UpdateQueueStatus :one
+const updateJoinCode = `-- name: UpdateJoinCode :one
 UPDATE queues
-SET status = $2
+SET join_code = $2
 WHERE id = $1
 RETURNING id, owner_id, name, status, avg_service_minutes, created_at, allow_remote_join, join_code, max_waiting
 `
 
-type UpdateQueueStatusParams struct {
-	ID     uuid.UUID
-	Status string
+type UpdateJoinCodeParams struct {
+	ID       uuid.UUID
+	JoinCode string
 }
 
-func (q *Queries) UpdateQueueStatus(ctx context.Context, arg UpdateQueueStatusParams) (Queue, error) {
-	row := q.db.QueryRow(ctx, updateQueueStatus, arg.ID, arg.Status)
+func (q *Queries) UpdateJoinCode(ctx context.Context, arg UpdateJoinCodeParams) (Queue, error) {
+	row := q.db.QueryRow(ctx, updateJoinCode, arg.ID, arg.JoinCode)
+	var i Queue
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Name,
+		&i.Status,
+		&i.AvgServiceMinutes,
+		&i.CreatedAt,
+		&i.AllowRemoteJoin,
+		&i.JoinCode,
+		&i.MaxWaiting,
+	)
+	return i, err
+}
+
+const updateQueue = `-- name: UpdateQueue :one
+UPDATE queues
+SET status = COALESCE($1, status),
+    allow_remote_join = COALESCE($2, allow_remote_join)
+WHERE id = $3
+RETURNING id, owner_id, name, status, avg_service_minutes, created_at, allow_remote_join, join_code, max_waiting
+`
+
+type UpdateQueueParams struct {
+	Status          pgtype.Text
+	AllowRemoteJoin pgtype.Bool
+	ID              uuid.UUID
+}
+
+func (q *Queries) UpdateQueue(ctx context.Context, arg UpdateQueueParams) (Queue, error) {
+	row := q.db.QueryRow(ctx, updateQueue, arg.Status, arg.AllowRemoteJoin, arg.ID)
 	var i Queue
 	err := row.Scan(
 		&i.ID,

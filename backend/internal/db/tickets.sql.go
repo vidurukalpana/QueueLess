@@ -55,8 +55,14 @@ func (q *Queries) CompleteCalledTickets(ctx context.Context, queueID uuid.UUID) 
 }
 
 const createTicket = `-- name: CreateTicket :one
-INSERT INTO tickets (queue_id, number, customer_name, token)
-VALUES ($1, $2, $3, $4)
+INSERT INTO tickets (queue_id, number, customer_name, token, checked_in_at)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    CASE WHEN $5::boolean THEN now() END
+)
 RETURNING id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at, checked_in_at
 `
 
@@ -65,6 +71,7 @@ type CreateTicketParams struct {
 	Number       int32
 	CustomerName string
 	Token        uuid.UUID
+	CheckedIn    bool
 }
 
 func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) (Ticket, error) {
@@ -73,6 +80,7 @@ func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) (Tic
 		arg.Number,
 		arg.CustomerName,
 		arg.Token,
+		arg.CheckedIn,
 	)
 	var i Ticket
 	err := row.Scan(

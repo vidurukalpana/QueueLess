@@ -17,6 +17,7 @@ import (
 
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
 	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
+	"github.com/vidurukalpana/QueueLess/backend/internal/queue"
 )
 
 const (
@@ -59,6 +60,7 @@ type callNextResponse struct {
 
 type joinQueueRequest struct {
 	Name string `json:"name"`
+	Code string `json:"code"`
 }
 
 type joinQueueResponse struct {
@@ -175,12 +177,14 @@ func (t *Tickets) Join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ticket, err := t.join(r.Context(), queueID, name)
+	ticket, err := t.join(r.Context(), queueID, name, input.Code)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 	case errors.Is(err, errQueueNotOpen):
 		httpx.WriteError(w, http.StatusConflict, "queue is not open")
+	case errors.Is(err, queue.ErrRemoteBlocked):
+		httpx.WriteError(w, http.StatusForbidden, "join at the shop")
 	case err != nil:
 		log.Printf("join queue: %v", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
@@ -190,17 +194,23 @@ func (t *Tickets) Join(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (t *Tickets) join(ctx context.Context, queueID uuid.UUID, name string) (db.Ticket, error) {
+func (t *Tickets) join(ctx context.Context, queueID uuid.UUID, name, code string) (db.Ticket, error) {
 	var ticket db.Ticket
 	err := t.inTx(ctx, func(queries *db.Queries) error {
 		// The row lock keeps ticket numbers unique when customers join together.
-		queue, err := queries.GetQueueForUpdate(ctx, queueID)
+		locked, err := queries.GetQueueForUpdate(ctx, queueID)
 		if err != nil {
 			return fmt.Errorf("lock queue: %w", err)
 		}
-		if queue.Status != queueStatusOpen {
+		if locked.Status != queueStatusOpen {
 			return errQueueNotOpen
 		}
+
+		settings := queue.Settings{AllowRemoteJoin: locked.AllowRemoteJoin, JoinCode: locked.JoinCode}
+		if err := queue.CanJoin(settings, code); err != nil {
+			return err
+		}
+
 		if err := queries.CancelStaleTickets(ctx, queueID); err != nil {
 			return fmt.Errorf("cancel stale: %w", err)
 		}
@@ -215,6 +225,7 @@ func (t *Tickets) join(ctx context.Context, queueID uuid.UUID, name string) (db.
 			Number:       number,
 			CustomerName: name,
 			Token:        uuid.New(),
+			CheckedIn:    queue.HasValidCode(settings, code),
 		})
 		if err != nil {
 			return fmt.Errorf("create ticket: %w", err)

@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
 	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
@@ -33,7 +34,12 @@ type createQueueRequest struct {
 }
 
 type updateQueueRequest struct {
-	Status string `json:"status"`
+	Status          *string `json:"status"`
+	AllowRemoteJoin *bool   `json:"allowRemoteJoin"`
+}
+
+type joinCodeResponse struct {
+	JoinCode string `json:"joinCode"`
 }
 
 type publicQueueResponse struct {
@@ -46,6 +52,8 @@ type ownerQueueResponse struct {
 	Name              string    `json:"name"`
 	Status            string    `json:"status"`
 	AvgServiceMinutes int32     `json:"avgServiceMinutes"`
+	AllowRemoteJoin   bool      `json:"allowRemoteJoin"`
+	JoinCode          string    `json:"joinCode"`
 	CreatedAt         time.Time `json:"createdAt"`
 }
 
@@ -129,7 +137,7 @@ func (q *Queues) GetPublic(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, publicQueueResponse{Name: queue.Name, Status: queue.Status})
 }
 
-// Update changes a queue's status.
+// Update changes a queue's status or settings.
 func (q *Queues) Update(w http.ResponseWriter, r *http.Request) {
 	queueID, ok := parseID(w, r)
 	if !ok {
@@ -145,12 +153,24 @@ func (q *Queues) Update(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if !isQueueStatus(input.Status) {
+	if input.Status == nil && input.AllowRemoteJoin == nil {
+		httpx.WriteError(w, http.StatusBadRequest, "nothing to update")
+		return
+	}
+	if input.Status != nil && !isQueueStatus(*input.Status) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid status")
 		return
 	}
 
-	updated, err := q.queries.UpdateQueueStatus(r.Context(), db.UpdateQueueStatusParams{ID: queue.ID, Status: input.Status})
+	params := db.UpdateQueueParams{ID: queue.ID}
+	if input.Status != nil {
+		params.Status = pgtype.Text{String: *input.Status, Valid: true}
+	}
+	if input.AllowRemoteJoin != nil {
+		params.AllowRemoteJoin = pgtype.Bool{Bool: *input.AllowRemoteJoin, Valid: true}
+	}
+
+	updated, err := q.queries.UpdateQueue(r.Context(), params)
 	if err != nil {
 		log.Printf("update queue: %v", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
@@ -159,6 +179,34 @@ func (q *Queues) Update(w http.ResponseWriter, r *http.Request) {
 
 	q.notifier.QueueChanged(r.Context(), queue.ID)
 	httpx.WriteJSON(w, http.StatusOK, q.toOwnerResponse(updated))
+}
+
+// RegenerateJoinCode replaces the code, so older QR codes stop working.
+func (q *Queues) RegenerateJoinCode(w http.ResponseWriter, r *http.Request) {
+	queueID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	queue, ok := requireQueueOwner(w, r, q.queries, queueID)
+	if !ok {
+		return
+	}
+
+	joinCode, err := newJoinCode()
+	if err != nil {
+		log.Printf("regenerate join code: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	updated, err := q.queries.UpdateJoinCode(r.Context(), db.UpdateJoinCodeParams{ID: queue.ID, JoinCode: joinCode})
+	if err != nil {
+		log.Printf("regenerate join code: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, joinCodeResponse{JoinCode: updated.JoinCode})
 }
 
 // parseID reads the id in the URL, answering 404 when it is malformed.
@@ -198,6 +246,8 @@ func (q *Queues) toOwnerResponse(queue db.Queue) ownerQueueResponse {
 		Name:              queue.Name,
 		Status:            queue.Status,
 		AvgServiceMinutes: queue.AvgServiceMinutes,
+		AllowRemoteJoin:   queue.AllowRemoteJoin,
+		JoinCode:          queue.JoinCode,
 		CreatedAt:         queue.CreatedAt.In(q.location),
 	}
 }

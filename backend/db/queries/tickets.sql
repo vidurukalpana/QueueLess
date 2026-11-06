@@ -1,6 +1,12 @@
 -- name: CreateTicket :one
-INSERT INTO tickets (queue_id, number, customer_name, token)
-VALUES ($1, $2, $3, $4)
+INSERT INTO tickets (queue_id, number, customer_name, token, checked_in_at)
+VALUES (
+    sqlc.arg(queue_id),
+    sqlc.arg(number),
+    sqlc.arg(customer_name),
+    sqlc.arg(token),
+    CASE WHEN sqlc.arg(checked_in)::boolean THEN now() END
+)
 RETURNING *;
 
 -- name: NextTicketNumber :one
