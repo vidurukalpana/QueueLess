@@ -4,11 +4,12 @@ import { useNavigate, useParams } from 'react-router'
 import {
   ApiError,
   cancelTicket,
+  checkInTicket,
   getErrorMessage,
   getTicket,
 } from '../api/client'
 import { clearSavedTicket, findTicketToken } from '../api/ticketStorage'
-import type { TicketStatus } from '../api/types'
+import type { TicketStatus, TicketStatusResponse } from '../api/types'
 import { ReconnectingBanner } from '../components/ReconnectingBanner'
 import { useQueueSocket } from '../hooks/useQueueSocket'
 
@@ -46,6 +47,23 @@ export function TicketPage() {
       navigator.vibrate(TURN_VIBRATION_MS)
     }
   }, [status])
+
+  const ticketKey = ['ticket', ticketId]
+  const checkIn = useMutation({
+    mutationFn: () => checkInTicket(ticketId ?? '', token ?? ''),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ticketKey })
+      const previous = queryClient.getQueryData<TicketStatusResponse>(ticketKey)
+      if (previous) {
+        queryClient.setQueryData(ticketKey, { ...previous, checkedIn: true })
+      }
+      return { previous }
+    },
+    onError: (_error, _variables, context) => {
+      queryClient.setQueryData(ticketKey, context?.previous)
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ticketKey }),
+  })
 
   const cancel = useMutation({
     mutationFn: () => cancelTicket(ticketId ?? '', token ?? ''),
@@ -107,6 +125,28 @@ export function TicketPage() {
                 <p className="text-sm text-gray-600">estimated wait</p>
               </div>
             </div>
+          )}
+
+          {status === 'waiting' &&
+            (ticket.data.checkedIn ? (
+              <p className="text-center">
+                <span className="rounded-full bg-gray-900 px-3 py-1 text-sm font-bold text-white">
+                  Checked in
+                </span>
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => checkIn.mutate()}
+                className="w-full rounded-md bg-gray-900 px-4 py-2 font-bold text-white"
+              >
+                I'm here
+              </button>
+            ))}
+          {checkIn.isError && (
+            <p role="alert" className="text-center">
+              {getErrorMessage(checkIn.error)}
+            </p>
           )}
 
           {cancel.isError && (
