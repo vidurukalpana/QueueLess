@@ -18,6 +18,7 @@ import (
 	"github.com/vidurukalpana/QueueLess/backend/internal/config"
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
 	"github.com/vidurukalpana/QueueLess/backend/internal/handlers"
+	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
 	"github.com/vidurukalpana/QueueLess/backend/internal/middleware"
 	"github.com/vidurukalpana/QueueLess/backend/internal/ws"
 )
@@ -56,6 +57,12 @@ func run() error {
 	router := chi.NewRouter()
 	router.Use(middleware.SecurityHeaders)
 	router.Use(middleware.CORS(cfg.FrontendURL))
+	router.NotFound(func(w http.ResponseWriter, _ *http.Request) {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+	})
+	router.MethodNotAllowed(func(w http.ResponseWriter, _ *http.Request) {
+		httpx.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+	})
 	router.Get("/health", handlers.Health(pool))
 
 	queries := db.New(pool)

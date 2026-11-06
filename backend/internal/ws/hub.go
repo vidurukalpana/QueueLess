@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+
+	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
 )
 
 type roomMessage struct {
@@ -36,6 +38,9 @@ func NewHub(frontendURL string) *Hub {
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return r.Header.Get("Origin") == frontendURL
+			},
+			Error: func(w http.ResponseWriter, _ *http.Request, status int, reason error) {
+				httpx.WriteError(w, status, reason.Error())
 			},
 		},
 	}

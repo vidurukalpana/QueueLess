@@ -70,7 +70,8 @@ export function JoinPage() {
   }
 
   const isMissing =
-    queue.error instanceof ApiError && queue.error.status === 404
+    queue.error instanceof ApiError &&
+    (queue.error.status === 400 || queue.error.status === 404)
   const isCheckingTicket = saved && savedTicket.isPending
 
   return (

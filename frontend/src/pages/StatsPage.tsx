@@ -47,7 +47,8 @@ export function StatsPage() {
   })
   const queue = queues.data?.find((item) => item.id === id)
   const isMissing =
-    stats.error instanceof ApiError && stats.error.status === 404
+    stats.error instanceof ApiError &&
+    (stats.error.status === 400 || stats.error.status === 404)
 
   return (
     <main className="p-6">
