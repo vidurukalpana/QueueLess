@@ -76,6 +76,7 @@ func run() error {
 		owner.Get("/api/queues", queueHandler.List)
 		owner.Patch("/api/queues/{id}", queueHandler.Update)
 		owner.Get("/api/queues/{id}/stats", queueHandler.Stats)
+		owner.Post("/api/queues/{id}/join-code", queueHandler.RegenerateJoinCode)
 		owner.Get("/api/queues/{id}/tickets", ticketHandler.List)
 		owner.Post("/api/queues/{id}/next", ticketHandler.CallNext)
 		owner.Post("/api/tickets/{id}/skip", ticketHandler.Skip)

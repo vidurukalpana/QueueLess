@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
 import { apiGet, apiPatch, getErrorMessage } from '../api/client'
 import type { Queue, QueueStatus } from '../api/types'
+import { QueueSettings } from '../components/QueueSettings'
 import { QueueStatusBadge } from '../components/QueueStatusBadge'
 import { ShareQueue } from '../components/ShareQueue'
 import { TicketList } from '../components/TicketList'
@@ -81,7 +82,10 @@ export function QueuePage() {
           )}
           <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
             <TicketList queueId={queue.id} />
-            <ShareQueue queueId={queue.id} />
+            <div className="flex flex-col gap-5">
+              <ShareQueue queueId={queue.id} joinCode={queue.joinCode} />
+              <QueueSettings queue={queue} />
+            </div>
           </div>
         </>
       )}

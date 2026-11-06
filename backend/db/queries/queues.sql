@@ -1,6 +1,6 @@
 -- name: CreateQueue :one
-INSERT INTO queues (owner_id, name)
-VALUES ($1, $2)
+INSERT INTO queues (owner_id, name, join_code)
+VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: ListQueuesByOwner :many
@@ -17,8 +17,16 @@ SELECT * FROM queues
 WHERE id = $1
 FOR UPDATE;
 
--- name: UpdateQueueStatus :one
+-- name: UpdateQueue :one
 UPDATE queues
-SET status = $2
+SET status = COALESCE(sqlc.narg(status), status),
+    allow_remote_join = COALESCE(sqlc.narg(allow_remote_join), allow_remote_join),
+    max_waiting = CASE WHEN sqlc.arg(set_max_waiting)::boolean THEN sqlc.narg(max_waiting)::int ELSE max_waiting END
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
+-- name: UpdateJoinCode :one
+UPDATE queues
+SET join_code = $2
 WHERE id = $1
 RETURNING *;

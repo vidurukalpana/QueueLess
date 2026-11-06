@@ -9,21 +9,23 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createQueue = `-- name: CreateQueue :one
-INSERT INTO queues (owner_id, name)
-VALUES ($1, $2)
-RETURNING id, owner_id, name, status, avg_service_minutes, created_at
+INSERT INTO queues (owner_id, name, join_code)
+VALUES ($1, $2, $3)
+RETURNING id, owner_id, name, status, avg_service_minutes, created_at, allow_remote_join, join_code, max_waiting
 `
 
 type CreateQueueParams struct {
-	OwnerID uuid.UUID
-	Name    string
+	OwnerID  uuid.UUID
+	Name     string
+	JoinCode string
 }
 
 func (q *Queries) CreateQueue(ctx context.Context, arg CreateQueueParams) (Queue, error) {
-	row := q.db.QueryRow(ctx, createQueue, arg.OwnerID, arg.Name)
+	row := q.db.QueryRow(ctx, createQueue, arg.OwnerID, arg.Name, arg.JoinCode)
 	var i Queue
 	err := row.Scan(
 		&i.ID,
@@ -32,12 +34,15 @@ func (q *Queries) CreateQueue(ctx context.Context, arg CreateQueueParams) (Queue
 		&i.Status,
 		&i.AvgServiceMinutes,
 		&i.CreatedAt,
+		&i.AllowRemoteJoin,
+		&i.JoinCode,
+		&i.MaxWaiting,
 	)
 	return i, err
 }
 
 const getQueue = `-- name: GetQueue :one
-SELECT id, owner_id, name, status, avg_service_minutes, created_at FROM queues
+SELECT id, owner_id, name, status, avg_service_minutes, created_at, allow_remote_join, join_code, max_waiting FROM queues
 WHERE id = $1
 `
 
@@ -51,12 +56,15 @@ func (q *Queries) GetQueue(ctx context.Context, id uuid.UUID) (Queue, error) {
 		&i.Status,
 		&i.AvgServiceMinutes,
 		&i.CreatedAt,
+		&i.AllowRemoteJoin,
+		&i.JoinCode,
+		&i.MaxWaiting,
 	)
 	return i, err
 }
 
 const getQueueForUpdate = `-- name: GetQueueForUpdate :one
-SELECT id, owner_id, name, status, avg_service_minutes, created_at FROM queues
+SELECT id, owner_id, name, status, avg_service_minutes, created_at, allow_remote_join, join_code, max_waiting FROM queues
 WHERE id = $1
 FOR UPDATE
 `
@@ -71,12 +79,15 @@ func (q *Queries) GetQueueForUpdate(ctx context.Context, id uuid.UUID) (Queue, e
 		&i.Status,
 		&i.AvgServiceMinutes,
 		&i.CreatedAt,
+		&i.AllowRemoteJoin,
+		&i.JoinCode,
+		&i.MaxWaiting,
 	)
 	return i, err
 }
 
 const listQueuesByOwner = `-- name: ListQueuesByOwner :many
-SELECT id, owner_id, name, status, avg_service_minutes, created_at FROM queues
+SELECT id, owner_id, name, status, avg_service_minutes, created_at, allow_remote_join, join_code, max_waiting FROM queues
 WHERE owner_id = $1
 ORDER BY created_at DESC
 `
@@ -97,6 +108,9 @@ func (q *Queries) ListQueuesByOwner(ctx context.Context, ownerID uuid.UUID) ([]Q
 			&i.Status,
 			&i.AvgServiceMinutes,
 			&i.CreatedAt,
+			&i.AllowRemoteJoin,
+			&i.JoinCode,
+			&i.MaxWaiting,
 		); err != nil {
 			return nil, err
 		}
@@ -108,20 +122,20 @@ func (q *Queries) ListQueuesByOwner(ctx context.Context, ownerID uuid.UUID) ([]Q
 	return items, nil
 }
 
-const updateQueueStatus = `-- name: UpdateQueueStatus :one
+const updateJoinCode = `-- name: UpdateJoinCode :one
 UPDATE queues
-SET status = $2
+SET join_code = $2
 WHERE id = $1
-RETURNING id, owner_id, name, status, avg_service_minutes, created_at
+RETURNING id, owner_id, name, status, avg_service_minutes, created_at, allow_remote_join, join_code, max_waiting
 `
 
-type UpdateQueueStatusParams struct {
-	ID     uuid.UUID
-	Status string
+type UpdateJoinCodeParams struct {
+	ID       uuid.UUID
+	JoinCode string
 }
 
-func (q *Queries) UpdateQueueStatus(ctx context.Context, arg UpdateQueueStatusParams) (Queue, error) {
-	row := q.db.QueryRow(ctx, updateQueueStatus, arg.ID, arg.Status)
+func (q *Queries) UpdateJoinCode(ctx context.Context, arg UpdateJoinCodeParams) (Queue, error) {
+	row := q.db.QueryRow(ctx, updateJoinCode, arg.ID, arg.JoinCode)
 	var i Queue
 	err := row.Scan(
 		&i.ID,
@@ -130,6 +144,49 @@ func (q *Queries) UpdateQueueStatus(ctx context.Context, arg UpdateQueueStatusPa
 		&i.Status,
 		&i.AvgServiceMinutes,
 		&i.CreatedAt,
+		&i.AllowRemoteJoin,
+		&i.JoinCode,
+		&i.MaxWaiting,
+	)
+	return i, err
+}
+
+const updateQueue = `-- name: UpdateQueue :one
+UPDATE queues
+SET status = COALESCE($1, status),
+    allow_remote_join = COALESCE($2, allow_remote_join),
+    max_waiting = CASE WHEN $3::boolean THEN $4::int ELSE max_waiting END
+WHERE id = $5
+RETURNING id, owner_id, name, status, avg_service_minutes, created_at, allow_remote_join, join_code, max_waiting
+`
+
+type UpdateQueueParams struct {
+	Status          pgtype.Text
+	AllowRemoteJoin pgtype.Bool
+	SetMaxWaiting   bool
+	MaxWaiting      pgtype.Int4
+	ID              uuid.UUID
+}
+
+func (q *Queries) UpdateQueue(ctx context.Context, arg UpdateQueueParams) (Queue, error) {
+	row := q.db.QueryRow(ctx, updateQueue,
+		arg.Status,
+		arg.AllowRemoteJoin,
+		arg.SetMaxWaiting,
+		arg.MaxWaiting,
+		arg.ID,
+	)
+	var i Queue
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Name,
+		&i.Status,
+		&i.AvgServiceMinutes,
+		&i.CreatedAt,
+		&i.AllowRemoteJoin,
+		&i.JoinCode,
+		&i.MaxWaiting,
 	)
 	return i, err
 }

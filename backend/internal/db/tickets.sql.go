@@ -54,10 +54,30 @@ func (q *Queries) CompleteCalledTickets(ctx context.Context, queueID uuid.UUID) 
 	return err
 }
 
+const countWaitingTickets = `-- name: CountWaitingTickets :one
+SELECT COUNT(*)::int AS waiting
+FROM tickets
+WHERE queue_id = $1
+  AND status = 'waiting'
+`
+
+func (q *Queries) CountWaitingTickets(ctx context.Context, queueID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countWaitingTickets, queueID)
+	var waiting int32
+	err := row.Scan(&waiting)
+	return waiting, err
+}
+
 const createTicket = `-- name: CreateTicket :one
-INSERT INTO tickets (queue_id, number, customer_name, token)
-VALUES ($1, $2, $3, $4)
-RETURNING id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at
+INSERT INTO tickets (queue_id, number, customer_name, token, checked_in_at)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    CASE WHEN $5::boolean THEN now() END
+)
+RETURNING id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at, checked_in_at
 `
 
 type CreateTicketParams struct {
@@ -65,6 +85,7 @@ type CreateTicketParams struct {
 	Number       int32
 	CustomerName string
 	Token        uuid.UUID
+	CheckedIn    bool
 }
 
 func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) (Ticket, error) {
@@ -73,6 +94,7 @@ func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) (Tic
 		arg.Number,
 		arg.CustomerName,
 		arg.Token,
+		arg.CheckedIn,
 	)
 	var i Ticket
 	err := row.Scan(
@@ -86,12 +108,13 @@ func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) (Tic
 		&i.CreatedAt,
 		&i.CalledAt,
 		&i.DoneAt,
+		&i.CheckedInAt,
 	)
 	return i, err
 }
 
 const getFirstWaitingTicket = `-- name: GetFirstWaitingTicket :one
-SELECT id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at FROM tickets
+SELECT id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at, checked_in_at FROM tickets
 WHERE queue_id = $1
   AND status = 'waiting'
 ORDER BY number
@@ -113,6 +136,7 @@ func (q *Queries) GetFirstWaitingTicket(ctx context.Context, queueID uuid.UUID) 
 		&i.CreatedAt,
 		&i.CalledAt,
 		&i.DoneAt,
+		&i.CheckedInAt,
 	)
 	return i, err
 }
@@ -155,7 +179,7 @@ func (q *Queries) GetQueueStats(ctx context.Context, arg GetQueueStatsParams) (G
 }
 
 const getTicket = `-- name: GetTicket :one
-SELECT id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at FROM tickets
+SELECT id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at, checked_in_at FROM tickets
 WHERE id = $1
 `
 
@@ -173,12 +197,13 @@ func (q *Queries) GetTicket(ctx context.Context, id uuid.UUID) (Ticket, error) {
 		&i.CreatedAt,
 		&i.CalledAt,
 		&i.DoneAt,
+		&i.CheckedInAt,
 	)
 	return i, err
 }
 
 const listActiveTickets = `-- name: ListActiveTickets :many
-SELECT id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at FROM tickets
+SELECT id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at, checked_in_at FROM tickets
 WHERE queue_id = $1
   AND status IN ('waiting', 'called')
 ORDER BY number
@@ -204,6 +229,7 @@ func (q *Queries) ListActiveTickets(ctx context.Context, queueID uuid.UUID) ([]T
 			&i.CreatedAt,
 			&i.CalledAt,
 			&i.DoneAt,
+			&i.CheckedInAt,
 		); err != nil {
 			return nil, err
 		}
@@ -235,7 +261,7 @@ SET status = $1::text,
     called_at = CASE WHEN $1::text = 'called' THEN now() ELSE called_at END,
     done_at = CASE WHEN $1::text = 'done' THEN now() ELSE done_at END
 WHERE id = $2
-RETURNING id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at
+RETURNING id, queue_id, ticket_date, number, customer_name, status, token, created_at, called_at, done_at, checked_in_at
 `
 
 type UpdateTicketStatusParams struct {
@@ -257,6 +283,7 @@ func (q *Queries) UpdateTicketStatus(ctx context.Context, arg UpdateTicketStatus
 		&i.CreatedAt,
 		&i.CalledAt,
 		&i.DoneAt,
+		&i.CheckedInAt,
 	)
 	return i, err
 }
