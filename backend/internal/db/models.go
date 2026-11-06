@@ -18,6 +18,9 @@ type Queue struct {
 	Status            string
 	AvgServiceMinutes int32
 	CreatedAt         time.Time
+	AllowRemoteJoin   bool
+	JoinCode          string
+	MaxWaiting        pgtype.Int4
 }
 
 type Ticket struct {
@@ -31,6 +34,7 @@ type Ticket struct {
 	CreatedAt    time.Time
 	CalledAt     *time.Time
 	DoneAt       *time.Time
+	CheckedInAt  *time.Time
 }
 
 type User struct {

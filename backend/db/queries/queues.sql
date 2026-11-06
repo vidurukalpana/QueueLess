@@ -1,6 +1,6 @@
 -- name: CreateQueue :one
-INSERT INTO queues (owner_id, name)
-VALUES ($1, $2)
+INSERT INTO queues (owner_id, name, join_code)
+VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: ListQueuesByOwner :many

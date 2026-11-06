@@ -69,7 +69,14 @@ func (q *Queues) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queue, err := q.queries.CreateQueue(r.Context(), db.CreateQueueParams{OwnerID: ownerID, Name: name})
+	joinCode, err := newJoinCode()
+	if err != nil {
+		log.Printf("create queue: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	queue, err := q.queries.CreateQueue(r.Context(), db.CreateQueueParams{OwnerID: ownerID, Name: name, JoinCode: joinCode})
 	if err != nil {
 		log.Printf("create queue: %v", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
