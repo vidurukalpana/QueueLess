@@ -26,5 +26,14 @@ export function ApiStatus() {
     message = 'Waking server…'
   }
 
-  return <p className="p-4 text-center text-sm text-gray-500">{message}</p>
+  return (
+    <p className="flex justify-center p-5">
+      <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-stone-500 ring-1 ring-stone-200">
+        <span
+          className={`size-1.5 rounded-full ${data ? 'bg-emerald-500' : 'bg-amber-500'}`}
+        />
+        {message}
+      </span>
+    </p>
+  )
 }

@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
+import { LogOut } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, Outlet } from 'react-router'
 import { ApiError, apiGet } from '../api/client'
 import type { Owner } from '../api/types'
 import { useAuth } from '../hooks/useAuth'
+import { Logo } from './Logo'
 
 export function OwnerLayout() {
   const { token, logout } = useAuth()
@@ -21,20 +23,25 @@ export function OwnerLayout() {
 
   return (
     <>
-      <header className="flex items-center justify-between border-b-2 border-gray-900 px-6 py-3">
-        <Link to="/dashboard" className="text-lg font-bold">
-          QueueLess
-        </Link>
-        <span className="flex items-center gap-3">
-          <span className="text-gray-600">{owner?.email}</span>
-          <button
-            type="button"
-            onClick={logout}
-            className="rounded-md border-2 border-gray-900 px-3 py-1 text-sm font-bold"
-          >
-            Log out
-          </button>
-        </span>
+      <header className="sticky top-0 z-20 border-b border-stone-200/70 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link to="/dashboard" className="rounded-lg">
+            <Logo />
+          </Link>
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="hidden truncate text-sm font-medium text-stone-600 sm:inline">
+              {owner?.email}
+            </span>
+            <button
+              type="button"
+              onClick={logout}
+              className="btn-secondary btn-small"
+            >
+              <LogOut className="size-3.5" />
+              Log out
+            </button>
+          </span>
+        </div>
       </header>
       <Outlet />
     </>

@@ -1,4 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
+import {
+  ArrowLeft,
+  CircleCheck,
+  Hourglass,
+  SkipForward,
+  Timer,
+  type LucideIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError, apiGet, getErrorMessage } from '../api/client'
@@ -16,13 +24,17 @@ function formatMinutes(minutes: number | null): string {
 interface StatCardProps {
   label: string
   value: string | number
+  icon: LucideIcon
 }
 
-function StatCard({ label, value }: StatCardProps) {
+function StatCard({ label, value, icon: Icon }: StatCardProps) {
   return (
-    <div className="rounded-md border-2 border-gray-900 p-4 text-center">
-      <p className="text-sm text-gray-600">{label}</p>
-      <p className="mt-1 text-3xl font-bold">{value}</p>
+    <div className="card p-5">
+      <span className="flex size-10 items-center justify-center rounded-xl bg-orange-100 text-brand">
+        <Icon className="size-5" />
+      </span>
+      <p className="mt-4 text-sm font-medium text-stone-600">{label}</p>
+      <p className="mt-0.5 text-3xl font-extrabold tracking-tight">{value}</p>
     </div>
   )
 }
@@ -51,21 +63,24 @@ export function StatsPage() {
     (stats.error.status === 400 || stats.error.status === 404)
 
   return (
-    <main className="p-6">
-      <Link to={`/dashboard/queues/${id}`} className="text-sm underline">
-        ← Back to queue
+    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+      <Link to={`/dashboard/queues/${id}`} className="back-link">
+        <ArrowLeft className="size-4" />
+        Back to queue
       </Link>
 
       {isMissing ? (
-        <p className="mt-3 text-gray-600">Queue not found.</p>
+        <p className="card mt-4 p-6 font-medium text-stone-600">
+          Queue not found.
+        </p>
       ) : (
         <>
-          <div className="mt-1 mb-5 flex flex-wrap items-end justify-between gap-3">
-            <h1 className="text-2xl font-bold">
+          <div className="mt-3 mb-6 flex flex-wrap items-end justify-between gap-3">
+            <h1 className="text-3xl font-extrabold tracking-tight break-words">
               {queue ? `${queue.name}: stats` : 'Stats'}
             </h1>
             <div>
-              <label htmlFor="date" className="mb-1 block text-sm font-bold">
+              <label htmlFor="date" className="field-label">
                 Date (Sri Lanka time)
               </label>
               <input
@@ -78,24 +93,38 @@ export function StatsPage() {
                     setDate(event.target.value)
                   }
                 }}
-                className="rounded-md border-2 border-gray-400 px-3 py-2"
+                className="field"
               />
             </div>
           </div>
 
-          {stats.isPending && <p className="text-gray-600">Loading stats…</p>}
-          {stats.isError && <p role="alert">{getErrorMessage(stats.error)}</p>}
+          {stats.isPending && <p className="text-stone-600">Loading stats…</p>}
+          {stats.isError && (
+            <p role="alert" className="notice-error">
+              {getErrorMessage(stats.error)}
+            </p>
+          )}
           {stats.data && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Served" value={stats.data.served} />
-              <StatCard label="Skipped" value={stats.data.skipped} />
+              <StatCard
+                label="Served"
+                value={stats.data.served}
+                icon={CircleCheck}
+              />
+              <StatCard
+                label="Skipped"
+                value={stats.data.skipped}
+                icon={SkipForward}
+              />
               <StatCard
                 label="Average wait"
                 value={formatMinutes(stats.data.avgWaitMinutes)}
+                icon={Hourglass}
               />
               <StatCard
                 label="Average service"
                 value={formatMinutes(stats.data.avgServiceMinutes)}
+                icon={Timer}
               />
             </div>
           )}

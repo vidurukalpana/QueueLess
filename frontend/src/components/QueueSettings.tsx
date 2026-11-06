@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { RefreshCw, Settings2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { apiPatch, apiPost, getErrorMessage } from '../api/client'
 import type { JoinCodeResponse, Queue, UpdateQueueRequest } from '../api/types'
@@ -46,19 +47,19 @@ export function QueueSettings({ queue }: QueueSettingsProps) {
   }
 
   return (
-    <section className="rounded-md border-2 border-gray-900 p-4">
-      <h2 className="mb-3 font-bold">Settings</h2>
+    <section className="card p-5">
+      <h2 className="mb-4 flex items-center gap-2 font-bold">
+        <Settings2 className="size-4 text-brand" />
+        Settings
+      </h2>
 
       {error && (
-        <p
-          role="alert"
-          className="mb-3 rounded-md border-2 border-dashed border-gray-500 bg-gray-100 px-3 py-2 text-sm"
-        >
+        <p role="alert" className="notice-error mb-3">
           {getErrorMessage(error)}
         </p>
       )}
 
-      <label className="mb-3 flex items-center justify-between gap-3">
+      <label className="mb-4 flex cursor-pointer items-center justify-between gap-3 text-sm font-semibold text-stone-700">
         <span>Allow remote joins</span>
         <input
           type="checkbox"
@@ -67,12 +68,13 @@ export function QueueSettings({ queue }: QueueSettingsProps) {
           onChange={(event) =>
             update.mutate({ allowRemoteJoin: event.target.checked })
           }
-          className="size-5 accent-gray-900"
+          className="peer sr-only"
         />
+        <span className="relative h-6 w-11 shrink-0 rounded-full bg-stone-300 transition peer-checked:bg-brand peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand after:absolute after:top-0.5 after:left-0.5 after:size-5 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-5" />
       </label>
 
-      <form onSubmit={handleSubmit} className="mb-3">
-        <label htmlFor="max-size" className="mb-1 block text-sm font-bold">
+      <form onSubmit={handleSubmit} className="mb-4">
+        <label htmlFor="max-size" className="field-label">
           Maximum queue size
         </label>
         <div className="flex gap-2">
@@ -87,18 +89,21 @@ export function QueueSettings({ queue }: QueueSettingsProps) {
               setMaxSize(event.target.value)
               setSaved(false)
             }}
-            className="min-w-0 flex-1 rounded-md border-2 border-gray-400 px-3 py-2"
+            className="field min-w-0 flex-1"
           />
           <button
             type="submit"
             disabled={update.isPending}
-            className="rounded-md border-2 border-gray-900 px-3 py-2 font-bold disabled:opacity-60"
+            className="btn-secondary"
           >
             Save
           </button>
         </div>
         {saved && (
-          <p role="status" className="mt-1 text-sm">
+          <p
+            role="status"
+            className="mt-1.5 text-sm font-medium text-emerald-700"
+          >
             Saved
           </p>
         )}
@@ -108,11 +113,12 @@ export function QueueSettings({ queue }: QueueSettingsProps) {
         type="button"
         disabled={regenerate.isPending}
         onClick={() => regenerate.mutate()}
-        className="w-full rounded-md border-2 border-gray-900 px-4 py-2 font-bold disabled:opacity-60"
+        className="btn-secondary w-full"
       >
+        <RefreshCw className="size-4" />
         Regenerate QR code
       </button>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-2 text-center text-xs text-stone-500">
         Older printed QR codes stop working.
       </p>
     </section>

@@ -1,5 +1,7 @@
+import { Check } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import type { Credentials } from '../api/types'
+import { Logo } from './Logo'
 
 interface CredentialsFormProps {
   title: string
@@ -13,7 +15,11 @@ interface CredentialsFormProps {
   onSubmit: (credentials: Credentials) => void
 }
 
-const inputClass = 'mb-3 w-full rounded-md border-2 border-gray-400 px-3 py-2'
+const highlights = [
+  'Customers wait anywhere, not in your shop',
+  'A QR code ready in seconds',
+  'See who has arrived, live',
+]
 
 export function CredentialsForm({
   title,
@@ -35,65 +41,84 @@ export function CredentialsForm({
   }
 
   return (
-    <main className="flex flex-col items-center gap-3 px-4 pt-16">
-      <p className="text-2xl font-bold">QueueLess</p>
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm rounded-md border-2 border-gray-900 p-4"
-      >
-        <h1 className="text-2xl font-bold">{title}</h1>
-        <p className="mb-4 text-sm text-gray-600">{subtitle}</p>
-
-        {notice && (
-          <p role="status" className="mb-3 rounded-md bg-gray-100 px-3 py-2">
-            {notice}
+    <main className="mx-auto grid min-h-[calc(100dvh-4.5rem)] w-full max-w-6xl items-center gap-8 px-4 py-6 lg:grid-cols-2 lg:gap-12">
+      <section className="hero hidden rounded-3xl p-10 shadow-xl shadow-orange-900/20 lg:block">
+        <div className="relative">
+          <Logo light />
+          <p className="mt-16 text-4xl leading-tight font-extrabold tracking-tight">
+            Skip the line.
+            <br />
+            Keep your customers.
           </p>
-        )}
-        {error && (
-          <p
-            role="alert"
-            className="mb-3 rounded-md border-2 border-dashed border-gray-500 bg-gray-100 px-3 py-2"
+          <ul className="mt-8 space-y-3 font-medium">
+            {highlights.map((highlight) => (
+              <li key={highlight} className="flex items-center gap-3">
+                <span className="flex size-6 items-center justify-center rounded-full bg-white/20">
+                  <Check className="size-3.5" strokeWidth={3} />
+                </span>
+                {highlight}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <div className="mx-auto w-full max-w-md">
+        <p className="mb-6 text-center lg:hidden">
+          <Logo />
+        </p>
+        <form onSubmit={handleSubmit} className="card p-6 sm:p-8">
+          <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
+          <p className="mt-1 mb-6 text-sm text-stone-600">{subtitle}</p>
+
+          {notice && (
+            <p role="status" className="notice-success mb-4">
+              {notice}
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="notice-error mb-4">
+              {error}
+            </p>
+          )}
+
+          <label htmlFor="email" className="field-label">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="field mb-4"
+          />
+
+          <label htmlFor="password" className="field-label">
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            required
+            minLength={minPasswordLength}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="field mb-5"
+          />
+
+          <button
+            type="submit"
+            disabled={isPending}
+            className="btn-primary w-full"
           >
-            {error}
-          </p>
-        )}
+            {submitLabel}
+          </button>
 
-        <label htmlFor="email" className="mb-1 block text-sm font-bold">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          className={inputClass}
-        />
-
-        <label htmlFor="password" className="mb-1 block text-sm font-bold">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          required
-          minLength={minPasswordLength}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className={inputClass}
-        />
-
-        <button
-          type="submit"
-          disabled={isPending}
-          className="w-full rounded-md bg-gray-900 px-4 py-2 font-bold text-white disabled:opacity-60"
-        >
-          {submitLabel}
-        </button>
-
-        <p className="mt-3 text-center text-sm">{footer}</p>
-      </form>
+          <p className="mt-4 text-center text-sm text-stone-600">{footer}</p>
+        </form>
+      </div>
     </main>
   )
 }
