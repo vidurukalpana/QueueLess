@@ -38,3 +38,25 @@ export function clearSavedTicket(queueId: string) {
   delete tickets[queueId]
   writeAll(tickets)
 }
+
+const ALERTS_KEY = 'queueless.alerts'
+
+export type TicketAlert = 'near' | 'turn'
+
+function readAlerts(): string[] {
+  try {
+    const stored = localStorage.getItem(ALERTS_KEY)
+    return stored ? (JSON.parse(stored) as string[]) : []
+  } catch {
+    return []
+  }
+}
+
+export function hasSentAlert(ticketId: string, alert: TicketAlert): boolean {
+  return readAlerts().includes(`${ticketId}:${alert}`)
+}
+
+export function markAlertSent(ticketId: string, alert: TicketAlert) {
+  const alerts = [...readAlerts(), `${ticketId}:${alert}`]
+  localStorage.setItem(ALERTS_KEY, JSON.stringify(alerts))
+}

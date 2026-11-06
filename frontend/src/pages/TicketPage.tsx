@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import {
   ApiError,
@@ -10,10 +9,10 @@ import {
 } from '../api/client'
 import { clearSavedTicket, findTicketToken } from '../api/ticketStorage'
 import type { TicketStatus, TicketStatusResponse } from '../api/types'
+import { AlertPermission } from '../components/AlertPermission'
 import { ReconnectingBanner } from '../components/ReconnectingBanner'
 import { useQueueSocket } from '../hooks/useQueueSocket'
-
-const TURN_VIBRATION_MS = [200, 100, 200]
+import { isNearTurn, useTurnAlerts } from '../hooks/useTurnAlerts'
 
 const statusLabels: Record<TicketStatus, string> = {
   waiting: 'Waiting',
@@ -36,17 +35,10 @@ export function TicketPage() {
   })
 
   const status = ticket.data?.status
-  const previousStatus = useRef(status)
 
   const { isReconnecting } = useQueueSocket(ticket.data?.queueId)
 
-  useEffect(() => {
-    const wasWaiting = previousStatus.current === 'waiting'
-    previousStatus.current = status
-    if (wasWaiting && status === 'called' && 'vibrate' in navigator) {
-      navigator.vibrate(TURN_VIBRATION_MS)
-    }
-  }, [status])
+  useTurnAlerts(ticketId, ticket.data)
 
   const ticketKey = ['ticket', ticketId]
   const checkIn = useMutation({
@@ -95,6 +87,14 @@ export function TicketPage() {
       {ticket.data && (
         <>
           {isReconnecting && <ReconnectingBanner />}
+          {isNearTurn(ticket.data) && (
+            <p
+              role="status"
+              className="rounded-md border-2 border-dashed border-gray-500 bg-gray-100 px-3 py-2 text-center"
+            >
+              Almost your turn! Please head to the shop.
+            </p>
+          )}
           <p className="text-center text-sm text-gray-600">
             {ticket.data.queueName}
           </p>
@@ -143,6 +143,7 @@ export function TicketPage() {
                 I'm here
               </button>
             ))}
+          {status === 'waiting' && <AlertPermission />}
           {checkIn.isError && (
             <p role="alert" className="text-center">
               {getErrorMessage(checkIn.error)}
