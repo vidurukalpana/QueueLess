@@ -185,6 +185,8 @@ func (t *Tickets) Join(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusConflict, "queue is not open")
 	case errors.Is(err, queue.ErrRemoteBlocked):
 		httpx.WriteError(w, http.StatusForbidden, "join at the shop")
+	case errors.Is(err, queue.ErrQueueFull):
+		httpx.WriteError(w, http.StatusConflict, "queue is full")
 	case err != nil:
 		log.Printf("join queue: %v", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
@@ -206,13 +208,18 @@ func (t *Tickets) join(ctx context.Context, queueID uuid.UUID, name, code string
 			return errQueueNotOpen
 		}
 
-		settings := queue.Settings{AllowRemoteJoin: locked.AllowRemoteJoin, JoinCode: locked.JoinCode}
-		if err := queue.CanJoin(settings, code); err != nil {
-			return err
-		}
-
 		if err := queries.CancelStaleTickets(ctx, queueID); err != nil {
 			return fmt.Errorf("cancel stale: %w", err)
+		}
+
+		waitingCount, err := queries.CountWaitingTickets(ctx, queueID)
+		if err != nil {
+			return fmt.Errorf("count waiting: %w", err)
+		}
+
+		settings := queueSettings(locked)
+		if err := queue.CanJoin(settings, int(waitingCount), code); err != nil {
+			return err
 		}
 
 		number, err := queries.NextTicketNumber(ctx, queueID)
@@ -233,6 +240,15 @@ func (t *Tickets) join(ctx context.Context, queueID uuid.UUID, name, code string
 		return nil
 	})
 	return ticket, err
+}
+
+func queueSettings(locked db.Queue) queue.Settings {
+	settings := queue.Settings{AllowRemoteJoin: locked.AllowRemoteJoin, JoinCode: locked.JoinCode}
+	if locked.MaxWaiting.Valid {
+		maxWaiting := int(locked.MaxWaiting.Int32)
+		settings.MaxWaiting = &maxWaiting
+	}
+	return settings
 }
 
 // inTx runs fn in a transaction, committing only when it succeeds.

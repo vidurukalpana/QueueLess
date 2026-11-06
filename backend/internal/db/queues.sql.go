@@ -154,19 +154,28 @@ func (q *Queries) UpdateJoinCode(ctx context.Context, arg UpdateJoinCodeParams) 
 const updateQueue = `-- name: UpdateQueue :one
 UPDATE queues
 SET status = COALESCE($1, status),
-    allow_remote_join = COALESCE($2, allow_remote_join)
-WHERE id = $3
+    allow_remote_join = COALESCE($2, allow_remote_join),
+    max_waiting = CASE WHEN $3::boolean THEN $4::int ELSE max_waiting END
+WHERE id = $5
 RETURNING id, owner_id, name, status, avg_service_minutes, created_at, allow_remote_join, join_code, max_waiting
 `
 
 type UpdateQueueParams struct {
 	Status          pgtype.Text
 	AllowRemoteJoin pgtype.Bool
+	SetMaxWaiting   bool
+	MaxWaiting      pgtype.Int4
 	ID              uuid.UUID
 }
 
 func (q *Queries) UpdateQueue(ctx context.Context, arg UpdateQueueParams) (Queue, error) {
-	row := q.db.QueryRow(ctx, updateQueue, arg.Status, arg.AllowRemoteJoin, arg.ID)
+	row := q.db.QueryRow(ctx, updateQueue,
+		arg.Status,
+		arg.AllowRemoteJoin,
+		arg.SetMaxWaiting,
+		arg.MaxWaiting,
+		arg.ID,
+	)
 	var i Queue
 	err := row.Scan(
 		&i.ID,

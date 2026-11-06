@@ -20,7 +20,8 @@ FOR UPDATE;
 -- name: UpdateQueue :one
 UPDATE queues
 SET status = COALESCE(sqlc.narg(status), status),
-    allow_remote_join = COALESCE(sqlc.narg(allow_remote_join), allow_remote_join)
+    allow_remote_join = COALESCE(sqlc.narg(allow_remote_join), allow_remote_join),
+    max_waiting = CASE WHEN sqlc.arg(set_max_waiting)::boolean THEN sqlc.narg(max_waiting)::int ELSE max_waiting END
 WHERE id = sqlc.arg(id)
 RETURNING *;
 

@@ -54,6 +54,20 @@ func (q *Queries) CompleteCalledTickets(ctx context.Context, queueID uuid.UUID) 
 	return err
 }
 
+const countWaitingTickets = `-- name: CountWaitingTickets :one
+SELECT COUNT(*)::int AS waiting
+FROM tickets
+WHERE queue_id = $1
+  AND status = 'waiting'
+`
+
+func (q *Queries) CountWaitingTickets(ctx context.Context, queueID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countWaitingTickets, queueID)
+	var waiting int32
+	err := row.Scan(&waiting)
+	return waiting, err
+}
+
 const createTicket = `-- name: CreateTicket :one
 INSERT INTO tickets (queue_id, number, customer_name, token, checked_in_at)
 VALUES (

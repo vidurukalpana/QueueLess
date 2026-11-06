@@ -35,10 +35,15 @@ func AverageMinutes(todayAverage float64, queueDefault int) int {
 type Settings struct {
 	AllowRemoteJoin bool
 	JoinCode        string
+	MaxWaiting      *int
 }
 
-// ErrRemoteBlocked means the queue only accepts customers at the shop.
-var ErrRemoteBlocked = errors.New("join at the shop")
+var (
+	// ErrRemoteBlocked means the queue only accepts customers at the shop.
+	ErrRemoteBlocked = errors.New("join at the shop")
+	// ErrQueueFull means the waiting list reached its maximum size.
+	ErrQueueFull = errors.New("queue is full")
+)
 
 // HasValidCode reports whether code is the queue's join code.
 func HasValidCode(settings Settings, code string) bool {
@@ -46,9 +51,12 @@ func HasValidCode(settings Settings, code string) bool {
 }
 
 // CanJoin applies the queue's rules to a new customer.
-func CanJoin(settings Settings, code string) error {
+func CanJoin(settings Settings, waitingCount int, code string) error {
 	if !settings.AllowRemoteJoin && !HasValidCode(settings, code) {
 		return ErrRemoteBlocked
+	}
+	if settings.MaxWaiting != nil && waitingCount >= *settings.MaxWaiting {
+		return ErrQueueFull
 	}
 	return nil
 }

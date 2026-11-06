@@ -22,6 +22,12 @@ WHERE queue_id = $1
   AND ticket_date < CURRENT_DATE
   AND status IN ('waiting', 'called');
 
+-- name: CountWaitingTickets :one
+SELECT COUNT(*)::int AS waiting
+FROM tickets
+WHERE queue_id = $1
+  AND status = 'waiting';
+
 -- name: ListActiveTickets :many
 SELECT * FROM tickets
 WHERE queue_id = $1

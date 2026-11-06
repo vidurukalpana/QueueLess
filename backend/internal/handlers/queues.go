@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -33,9 +35,37 @@ type createQueueRequest struct {
 	Name string `json:"name"`
 }
 
+const (
+	minMaxWaiting = 1
+	maxMaxWaiting = 500
+)
+
+// optionalInt separates a missing field from an explicit null.
+type optionalInt struct {
+	IsSet bool
+	Value *int32
+}
+
+// UnmarshalJSON records that the field was sent.
+func (o *optionalInt) UnmarshalJSON(data []byte) error {
+	o.IsSet = true
+	if string(data) == "null" {
+		o.Value = nil
+		return nil
+	}
+
+	var value int32
+	if err := json.Unmarshal(data, &value); err != nil {
+		return fmt.Errorf("decode integer: %w", err)
+	}
+	o.Value = &value
+	return nil
+}
+
 type updateQueueRequest struct {
-	Status          *string `json:"status"`
-	AllowRemoteJoin *bool   `json:"allowRemoteJoin"`
+	Status          *string     `json:"status"`
+	AllowRemoteJoin *bool       `json:"allowRemoteJoin"`
+	MaxWaiting      optionalInt `json:"maxWaiting"`
 }
 
 type joinCodeResponse struct {
@@ -54,6 +84,7 @@ type ownerQueueResponse struct {
 	AvgServiceMinutes int32     `json:"avgServiceMinutes"`
 	AllowRemoteJoin   bool      `json:"allowRemoteJoin"`
 	JoinCode          string    `json:"joinCode"`
+	MaxWaiting        *int32    `json:"maxWaiting"`
 	CreatedAt         time.Time `json:"createdAt"`
 }
 
@@ -153,7 +184,7 @@ func (q *Queues) Update(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if input.Status == nil && input.AllowRemoteJoin == nil {
+	if input.Status == nil && input.AllowRemoteJoin == nil && !input.MaxWaiting.IsSet {
 		httpx.WriteError(w, http.StatusBadRequest, "nothing to update")
 		return
 	}
@@ -162,12 +193,21 @@ func (q *Queues) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	params := db.UpdateQueueParams{ID: queue.ID}
+	if value := input.MaxWaiting.Value; value != nil && (*value < minMaxWaiting || *value > maxMaxWaiting) {
+		httpx.WriteError(w, http.StatusBadRequest, "maxWaiting must be 1 to 500")
+		return
+	}
+
+	params := db.UpdateQueueParams{ID: queue.ID, SetMaxWaiting: input.MaxWaiting.IsSet}
 	if input.Status != nil {
 		params.Status = pgtype.Text{String: *input.Status, Valid: true}
 	}
 	if input.AllowRemoteJoin != nil {
 		params.AllowRemoteJoin = pgtype.Bool{Bool: *input.AllowRemoteJoin, Valid: true}
+	}
+
+	if input.MaxWaiting.Value != nil {
+		params.MaxWaiting = pgtype.Int4{Int32: *input.MaxWaiting.Value, Valid: true}
 	}
 
 	updated, err := q.queries.UpdateQueue(r.Context(), params)
@@ -241,7 +281,7 @@ func requireQueueOwner(w http.ResponseWriter, r *http.Request, queries *db.Queri
 }
 
 func (q *Queues) toOwnerResponse(queue db.Queue) ownerQueueResponse {
-	return ownerQueueResponse{
+	response := ownerQueueResponse{
 		ID:                queue.ID,
 		Name:              queue.Name,
 		Status:            queue.Status,
@@ -250,6 +290,10 @@ func (q *Queues) toOwnerResponse(queue db.Queue) ownerQueueResponse {
 		JoinCode:          queue.JoinCode,
 		CreatedAt:         queue.CreatedAt.In(q.location),
 	}
+	if queue.MaxWaiting.Valid {
+		response.MaxWaiting = &queue.MaxWaiting.Int32
+	}
+	return response
 }
 
 func isQueueStatus(status string) bool {
