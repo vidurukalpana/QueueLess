@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
   ApiError,
   apiGet,
@@ -17,9 +17,25 @@ import type {
 import { QueueStatusBadge } from '../components/QueueStatusBadge'
 
 const MAX_NAME_LENGTH = 40
+const FORBIDDEN = 403
+const CONFLICT = 409
+
+function getJoinErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.status === FORBIDDEN) {
+    return 'Please scan the QR code at the shop'
+  }
+  if (error instanceof ApiError && error.status === CONFLICT) {
+    return error.message === 'queue is full'
+      ? 'This queue is full. Please try again soon.'
+      : 'This queue is not open right now. Please try again soon.'
+  }
+  return getErrorMessage(error)
+}
 
 export function JoinPage() {
   const { queueId } = useParams()
+  const [searchParams] = useSearchParams()
+  const code = searchParams.get('code') ?? undefined
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const queue = useQuery({
@@ -45,7 +61,7 @@ export function JoinPage() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    join.mutate({ name })
+    join.mutate({ name, code })
   }
 
   const status = savedTicket.data?.status
@@ -85,7 +101,7 @@ export function JoinPage() {
               role="alert"
               className="rounded-md border-2 border-dashed border-gray-500 bg-gray-100 px-3 py-2 text-center"
             >
-              {getErrorMessage(join.error)}
+              {getJoinErrorMessage(join.error)}
             </p>
           )}
 

@@ -27,11 +27,24 @@ export interface Queue {
   name: string
   status: QueueStatus
   avgServiceMinutes: number
+  allowRemoteJoin: boolean
+  joinCode: string
+  maxWaiting: number | null
   createdAt: string
 }
 
 export interface CreateQueueRequest {
   name: string
+}
+
+export interface UpdateQueueRequest {
+  status?: QueueStatus
+  allowRemoteJoin?: boolean
+  maxWaiting?: number | null
+}
+
+export interface JoinCodeResponse {
+  joinCode: string
 }
 
 export type TicketStatus =
@@ -57,6 +70,7 @@ export interface PublicQueue {
 
 export interface JoinQueueRequest {
   name: string
+  code?: string
 }
 
 export interface JoinQueueResponse {

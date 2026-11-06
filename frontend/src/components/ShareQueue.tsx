@@ -5,11 +5,13 @@ const QR_SIZE = 170
 
 interface ShareQueueProps {
   queueId: string
+  joinCode: string
 }
 
-export function ShareQueue({ queueId }: ShareQueueProps) {
+export function ShareQueue({ queueId, joinCode }: ShareQueueProps) {
   const [message, setMessage] = useState('')
   const link = `${window.location.origin}/q/${queueId}`
+  const shopLink = `${link}?code=${joinCode}`
 
   async function copyLink() {
     try {
@@ -24,7 +26,7 @@ export function ShareQueue({ queueId }: ShareQueueProps) {
     <section className="rounded-md border-2 border-gray-900 p-4 text-center">
       <h2 className="mb-3 font-bold">Share this queue</h2>
       <QRCodeSVG
-        value={link}
+        value={shopLink}
         size={QR_SIZE}
         marginSize={2}
         title="Queue QR code"
