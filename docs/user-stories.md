@@ -45,7 +45,8 @@ As a customer, I want to see my live position and estimated wait, so that I can 
 
 As an owner, I want to call, skip and complete tickets, so that I can move customers through the queue in order.
 
-- **Given** customers are waiting, **when** I click **Call next**, **then** the current called ticket becomes done and the lowest-numbered waiting ticket becomes called.
+- **Given** customers are waiting and nobody is being served, **when** I click **Call next**, **then** the lowest-numbered waiting ticket becomes called.
+- **Given** a customer is being served, **when** I look at **Call next**, **then** it is disabled until I click **Done** or **Skip**.
 - **Given** a customer does not respond or is absent, **when** I click **Skip** on their ticket, **then** the ticket is marked skipped and leaves the queue.
 - **Given** a ticket is called, **when** I click **Done**, **then** the ticket is marked done.
 - **Given** I change a ticket, **when** the change is saved, **then** my dashboard and every customer screen update instantly.

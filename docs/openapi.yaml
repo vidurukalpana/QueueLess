@@ -317,8 +317,8 @@ paths:
       operationId: callNextTicket
       summary: Call the next ticket
       description: |
-        In one transaction, the current called ticket becomes done, then the lowest-numbered
-        waiting ticket becomes called.
+        Calls the lowest-numbered waiting ticket. The current customer must be finished
+        first with done or skip.
       responses:
         "200":
           description: The newly called ticket, or null if nobody is waiting
@@ -332,6 +332,14 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: A customer is still being served
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: finish the current customer first
 
   /api/queues/{id}/stats:
     parameters:

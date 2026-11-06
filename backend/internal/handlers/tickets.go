@@ -28,7 +28,10 @@ const (
 	queueStatusOpen = "open"
 )
 
-var errQueueNotOpen = errors.New("queue is not open")
+var (
+	errQueueNotOpen   = errors.New("queue is not open")
+	errCustomerActive = errors.New("finish the current customer first")
+)
 
 // Tickets handles queue tickets.
 type Tickets struct {
@@ -98,7 +101,7 @@ func (t *Tickets) List(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, response)
 }
 
-// CallNext completes the current ticket, then calls the next waiting one.
+// CallNext calls the next waiting ticket once nobody is being served.
 func (t *Tickets) CallNext(w http.ResponseWriter, r *http.Request) {
 	queueID, ok := parseID(w, r)
 	if !ok {
@@ -109,6 +112,10 @@ func (t *Tickets) CallNext(w http.ResponseWriter, r *http.Request) {
 	}
 
 	called, err := t.callNext(r.Context(), queueID)
+	if errors.Is(err, errCustomerActive) {
+		httpx.WriteError(w, http.StatusConflict, err.Error())
+		return
+	}
 	if err != nil {
 		log.Printf("call next: %v", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
@@ -135,8 +142,13 @@ func (t *Tickets) callNext(ctx context.Context, queueID uuid.UUID) (*db.Ticket, 
 		if err := queries.CancelStaleTickets(ctx, queueID); err != nil {
 			return fmt.Errorf("cancel stale: %w", err)
 		}
-		if err := queries.CompleteCalledTickets(ctx, queueID); err != nil {
-			return fmt.Errorf("complete called: %w", err)
+
+		hasCalled, err := queries.HasCalledTicket(ctx, queueID)
+		if err != nil {
+			return fmt.Errorf("check called ticket: %w", err)
+		}
+		if hasCalled {
+			return errCustomerActive
 		}
 
 		next, err := queries.GetFirstWaitingTicket(ctx, queueID)
