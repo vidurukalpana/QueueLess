@@ -51,13 +51,19 @@ func run() error {
 	router.Use(middleware.CORS(cfg.FrontendURL))
 	router.Get("/health", handlers.Health(pool))
 
-	authHandler := handlers.NewAuth(db.New(pool), cfg.JWTSecret)
+	queries := db.New(pool)
+	authHandler := handlers.NewAuth(queries, cfg.JWTSecret)
+	queueHandler := handlers.NewQueues(queries, cfg.Location)
 	router.Post("/api/auth/register", authHandler.Register)
 	router.Post("/api/auth/login", authHandler.Login)
+	router.Get("/api/queues/{id}", queueHandler.GetPublic)
 
 	router.Group(func(owner chi.Router) {
 		owner.Use(middleware.Authenticate(cfg.JWTSecret))
 		owner.Get("/api/auth/me", authHandler.Me)
+		owner.Post("/api/queues", queueHandler.Create)
+		owner.Get("/api/queues", queueHandler.List)
+		owner.Patch("/api/queues/{id}", queueHandler.Update)
 	})
 
 	server := &http.Server{
