@@ -18,6 +18,7 @@ import (
 	"github.com/vidurukalpana/QueueLess/backend/internal/config"
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
 	"github.com/vidurukalpana/QueueLess/backend/internal/handlers"
+	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
 	"github.com/vidurukalpana/QueueLess/backend/internal/middleware"
 	"github.com/vidurukalpana/QueueLess/backend/internal/ws"
 )
@@ -25,6 +26,8 @@ import (
 const (
 	readHeaderTimeout = 5 * time.Second
 	shutdownTimeout   = 10 * time.Second
+	loginsPerMinute   = 5
+	joinsPerMinute    = 10
 )
 
 func main() {
@@ -52,7 +55,14 @@ func run() error {
 	go hub.Run(ctx)
 
 	router := chi.NewRouter()
+	router.Use(middleware.SecurityHeaders)
 	router.Use(middleware.CORS(cfg.FrontendURL))
+	router.NotFound(func(w http.ResponseWriter, _ *http.Request) {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+	})
+	router.MethodNotAllowed(func(w http.ResponseWriter, _ *http.Request) {
+		httpx.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+	})
 	router.Get("/health", handlers.Health(pool))
 
 	queries := db.New(pool)
@@ -62,9 +72,9 @@ func run() error {
 	ticketHandler := handlers.NewTickets(pool, queries, cfg.Location, notifier)
 	socketHandler := handlers.NewSocket(queries, hub)
 	router.Post("/api/auth/register", authHandler.Register)
-	router.Post("/api/auth/login", authHandler.Login)
+	router.With(middleware.RateLimit(loginsPerMinute)).Post("/api/auth/login", authHandler.Login)
 	router.Get("/api/queues/{id}", queueHandler.GetPublic)
-	router.Post("/api/queues/{id}/tickets", ticketHandler.Join)
+	router.With(middleware.RateLimit(joinsPerMinute)).Post("/api/queues/{id}/tickets", ticketHandler.Join)
 	router.Get("/api/tickets/{id}", ticketHandler.GetStatus)
 	router.Delete("/api/tickets/{id}", ticketHandler.Cancel)
 	router.Post("/api/tickets/{id}/checkin", ticketHandler.CheckIn)

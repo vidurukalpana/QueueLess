@@ -1,3 +1,4 @@
+import { Bell, BellOff, BellRing } from 'lucide-react'
 import { useState } from 'react'
 
 type AlertPermissionState = NotificationPermission | 'unsupported'
@@ -25,8 +26,9 @@ export function AlertPermission() {
       <button
         type="button"
         onClick={requestPermission}
-        className="w-full rounded-md border-2 border-gray-900 px-4 py-2 font-bold"
+        className="btn-secondary w-full"
       >
+        <Bell className="size-4" />
         Get an alert near your turn
       </button>
     )
@@ -34,14 +36,16 @@ export function AlertPermission() {
 
   if (permission === 'granted') {
     return (
-      <p className="text-center text-sm text-gray-600">
+      <p className="notice-success justify-center">
+        <BellRing className="size-4 shrink-0" />
         Alerts are on. We will notify you near your turn.
       </p>
     )
   }
 
   return (
-    <p className="rounded-md border-2 border-dashed border-gray-500 bg-gray-100 px-3 py-2 text-center text-sm">
+    <p className="notice-warning">
+      <BellOff className="mt-0.5 size-4 shrink-0" />
       Notifications are off. Keep this page open to see a banner near your turn.
     </p>
   )

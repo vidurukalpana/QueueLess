@@ -7,9 +7,15 @@ const statusLabels: Record<QueueStatus, string> = {
 }
 
 const statusClasses: Record<QueueStatus, string> = {
-  open: 'border-gray-900 bg-gray-900 text-white',
-  paused: 'border-gray-900 text-gray-900',
-  closed: 'border-gray-400 text-gray-500',
+  open: 'bg-emerald-100 text-emerald-800',
+  paused: 'bg-amber-100 text-amber-900',
+  closed: 'bg-stone-200 text-stone-700',
+}
+
+const dotClasses: Record<QueueStatus, string> = {
+  open: 'bg-emerald-500',
+  paused: 'bg-amber-500',
+  closed: 'bg-stone-500',
 }
 
 interface QueueStatusBadgeProps {
@@ -18,9 +24,8 @@ interface QueueStatusBadgeProps {
 
 export function QueueStatusBadge({ status }: QueueStatusBadgeProps) {
   return (
-    <span
-      className={`rounded-full border-2 px-3 text-xs font-bold ${statusClasses[status]}`}
-    >
+    <span className={`pill ${statusClasses[status]}`}>
+      <span className={`size-1.5 rounded-full ${dotClasses[status]}`} />
       {statusLabels[status]}
     </span>
   )

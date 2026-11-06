@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { ArrowRight } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
@@ -14,6 +15,7 @@ import type {
   JoinQueueResponse,
   PublicQueue,
 } from '../api/types'
+import { CustomerShell } from '../components/CustomerShell'
 import { QueueStatusBadge } from '../components/QueueStatusBadge'
 
 const MAX_NAME_LENGTH = 40
@@ -70,71 +72,79 @@ export function JoinPage() {
   }
 
   const isMissing =
-    queue.error instanceof ApiError && queue.error.status === 404
+    queue.error instanceof ApiError &&
+    (queue.error.status === 400 || queue.error.status === 404)
   const isCheckingTicket = saved && savedTicket.isPending
 
   return (
-    <main className="mx-auto flex max-w-sm flex-col gap-4 px-5 pt-8">
-      <p className="text-center text-lg font-bold">QueueLess</p>
-
+    <CustomerShell>
       {(queue.isPending || isCheckingTicket) && (
-        <p className="text-center text-gray-600">Loading queue…</p>
+        <p className="text-center text-stone-600">Loading queue…</p>
       )}
       {isMissing && (
-        <p className="text-center text-gray-600">Queue not found.</p>
+        <p className="card p-6 text-center font-medium text-stone-600">
+          Queue not found.
+        </p>
       )}
       {queue.isError && !isMissing && (
-        <p role="alert" className="text-center">
+        <p role="alert" className="notice-error">
           {getErrorMessage(queue.error)}
         </p>
       )}
 
       {queue.data && !isCheckingTicket && (
-        <>
-          <div className="mt-3 text-center">
-            <h1 className="mb-1 text-2xl font-bold">{queue.data.name}</h1>
-            <QueueStatusBadge status={queue.data.status} />
+        <div className="card overflow-hidden">
+          <div className="hero px-6 py-8 text-center">
+            <div className="relative">
+              <h1 className="mb-3 text-2xl font-extrabold tracking-tight break-words">
+                {queue.data.name}
+              </h1>
+              <QueueStatusBadge status={queue.data.status} />
+            </div>
           </div>
 
-          {join.isError && (
-            <p
-              role="alert"
-              className="rounded-md border-2 border-dashed border-gray-500 bg-gray-100 px-3 py-2 text-center"
-            >
-              {getJoinErrorMessage(join.error)}
-            </p>
-          )}
-
-          {queue.data.status === 'open' ? (
-            <form onSubmit={handleSubmit}>
-              <label htmlFor="name" className="mb-1 block text-sm font-bold">
-                Your name
-              </label>
-              <input
-                id="name"
-                required
-                maxLength={MAX_NAME_LENGTH}
-                placeholder="1–40 characters"
-                autoComplete="name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className="mb-3 w-full rounded-md border-2 border-gray-400 px-3 py-2"
-              />
-              <button
-                type="submit"
-                disabled={join.isPending}
-                className="w-full rounded-md bg-gray-900 px-4 py-2 font-bold text-white disabled:opacity-60"
+          <div className="flex flex-col gap-4 p-6">
+            {join.isError && (
+              <p
+                role="alert"
+                className="notice-error justify-center text-center"
               >
-                Join queue
-              </button>
-            </form>
-          ) : (
-            <p className="rounded-md border-2 border-dashed border-gray-500 bg-gray-100 px-3 py-2 text-center">
-              This queue is {queue.data.status}. Please try again soon.
-            </p>
-          )}
-        </>
+                {getJoinErrorMessage(join.error)}
+              </p>
+            )}
+
+            {queue.data.status === 'open' ? (
+              <form onSubmit={handleSubmit}>
+                <label htmlFor="name" className="field-label">
+                  Your name
+                </label>
+                <input
+                  id="name"
+                  required
+                  maxLength={MAX_NAME_LENGTH}
+                  placeholder="1–40 characters"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  className="field mb-4"
+                />
+                <button
+                  type="submit"
+                  disabled={join.isPending}
+                  className="btn-primary w-full"
+                >
+                  Join queue
+                  <ArrowRight className="size-4" />
+                </button>
+              </form>
+            ) : (
+              <p className="notice-warning justify-center text-center">
+                This queue is {queue.data.status}. Please try again soon.
+              </p>
+            )}
+          </div>
+        </div>
       )}
-    </main>
+    </CustomerShell>
   )
 }

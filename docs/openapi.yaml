@@ -188,6 +188,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicQueue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
     patch:
@@ -229,6 +231,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/JoinCodeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -250,6 +254,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/OwnerTicket"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -320,6 +326,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CallNextResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -371,6 +379,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TicketStatusResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
     delete:
@@ -382,6 +392,8 @@ paths:
       responses:
         "204":
           description: Ticket cancelled
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -399,6 +411,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OwnerTicket"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -420,6 +434,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OwnerTicket"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -444,6 +460,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CheckInResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
@@ -464,6 +482,8 @@ paths:
       responses:
         "101":
           description: Switching to the WebSocket protocol
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "403":
           description: Origin is not allowed
         "404":
@@ -606,6 +626,7 @@ components:
         name:
           type: string
           minLength: 1
+          maxLength: 80
 
     UpdateQueueRequest:
       type: object

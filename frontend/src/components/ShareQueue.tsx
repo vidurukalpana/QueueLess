@@ -1,3 +1,4 @@
+import { Copy, QrCode } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useState } from 'react'
 
@@ -23,25 +24,26 @@ export function ShareQueue({ queueId, joinCode }: ShareQueueProps) {
   }
 
   return (
-    <section className="rounded-md border-2 border-gray-900 p-4 text-center">
-      <h2 className="mb-3 font-bold">Share this queue</h2>
-      <QRCodeSVG
-        value={shopLink}
-        size={QR_SIZE}
-        marginSize={2}
-        title="Queue QR code"
-        className="mx-auto mb-3"
-      />
-      <p className="mb-3 text-sm break-all text-gray-600">{link}</p>
-      <button
-        type="button"
-        onClick={copyLink}
-        className="w-full rounded-md border-2 border-gray-900 px-4 py-2 font-bold"
-      >
+    <section className="card p-5 text-center">
+      <h2 className="mb-4 flex items-center justify-center gap-2 font-bold">
+        <QrCode className="size-4 text-brand" />
+        Share this queue
+      </h2>
+      <div className="mx-auto mb-3 w-fit rounded-2xl bg-white p-2 ring-2 ring-orange-200">
+        <QRCodeSVG
+          value={shopLink}
+          size={QR_SIZE}
+          marginSize={2}
+          title="Queue QR code"
+        />
+      </div>
+      <p className="mb-3 text-xs break-all text-stone-500">{link}</p>
+      <button type="button" onClick={copyLink} className="btn-secondary w-full">
+        <Copy className="size-4" />
         Copy share link
       </button>
       {message && (
-        <p role="status" className="mt-2 text-sm">
+        <p role="status" className="mt-2 text-sm font-medium text-emerald-700">
           {message}
         </p>
       )}

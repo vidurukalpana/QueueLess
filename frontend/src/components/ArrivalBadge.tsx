@@ -1,14 +1,18 @@
+import { MapPin, Wifi } from 'lucide-react'
+
 interface ArrivalBadgeProps {
   checkedIn: boolean
 }
 
 export function ArrivalBadge({ checkedIn }: ArrivalBadgeProps) {
   return checkedIn ? (
-    <span className="rounded-full border-2 border-gray-900 bg-gray-900 px-3 text-xs font-bold text-white">
+    <span className="pill bg-emerald-100 text-emerald-800">
+      <MapPin className="size-3" />
       Here
     </span>
   ) : (
-    <span className="rounded-full border-2 border-gray-400 px-3 text-xs font-bold text-gray-500">
+    <span className="pill bg-stone-100 text-stone-600">
+      <Wifi className="size-3" />
       Remote
     </span>
   )

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, BarChart3 } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 import { apiGet, apiPatch, getErrorMessage } from '../api/client'
 import type { Queue, QueueStatus } from '../api/types'
@@ -30,53 +31,64 @@ export function QueuePage() {
   const queue = queues.data?.find((item) => item.id === id)
 
   return (
-    <main className="p-6">
-      <Link to="/dashboard" className="text-sm underline">
-        ← Back to queues
+    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+      <Link to="/dashboard" className="back-link">
+        <ArrowLeft className="size-4" />
+        Back to queues
       </Link>
 
-      {queues.isPending && <p className="mt-3 text-gray-600">Loading queue…</p>}
+      {queues.isPending && (
+        <p className="mt-4 text-stone-600">Loading queue…</p>
+      )}
       {queues.isError && (
-        <p role="alert" className="mt-3">
+        <p role="alert" className="notice-error mt-4">
           {getErrorMessage(queues.error)}
         </p>
       )}
       {queues.isSuccess && !queue && (
-        <p className="mt-3 text-gray-600">Queue not found.</p>
+        <p className="card mt-4 p-6 font-medium text-stone-600">
+          Queue not found.
+        </p>
       )}
 
       {queue && (
         <>
-          <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold">{queue.name}</h1>
+          <div className="mt-3 mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-extrabold tracking-tight break-words">
+                {queue.name}
+              </h1>
               <QueueStatusBadge status={queue.status} />
             </div>
-            <div className="flex gap-3">
-              {statusActions.map(({ status, label }) => (
-                <button
-                  key={status}
-                  type="button"
-                  disabled={queue.status === status || updateStatus.isPending}
-                  onClick={() => updateStatus.mutate(status)}
-                  className="rounded-md border-2 border-gray-900 px-4 py-2 font-bold disabled:bg-gray-200"
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex rounded-xl bg-stone-200/70 p-1">
+                {statusActions.map(({ status, label }) => (
+                  <button
+                    key={status}
+                    type="button"
+                    disabled={queue.status === status || updateStatus.isPending}
+                    onClick={() => updateStatus.mutate(status)}
+                    className={`min-h-9 cursor-pointer rounded-lg px-4 text-sm font-bold transition disabled:cursor-not-allowed ${
+                      queue.status === status
+                        ? 'bg-white text-brand-dark shadow-sm'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <Link
                 to={`/dashboard/queues/${queue.id}/stats`}
-                className="rounded-md border-2 border-gray-900 px-4 py-2 font-bold"
+                className="btn-secondary"
               >
+                <BarChart3 className="size-4" />
                 View stats
               </Link>
             </div>
           </div>
           {updateStatus.isError && (
-            <p
-              role="alert"
-              className="mb-4 rounded-md border-2 border-dashed border-gray-500 bg-gray-100 px-3 py-2"
-            >
+            <p role="alert" className="notice-error mb-4">
               {getErrorMessage(updateStatus.error)}
             </p>
           )}

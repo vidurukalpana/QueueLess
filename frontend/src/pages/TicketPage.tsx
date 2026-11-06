@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { BellRing, CircleCheck, Clock, MapPin, Users } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router'
 import {
   ApiError,
@@ -10,6 +11,7 @@ import {
 import { clearSavedTicket, findTicketToken } from '../api/ticketStorage'
 import type { TicketStatus, TicketStatusResponse } from '../api/types'
 import { AlertPermission } from '../components/AlertPermission'
+import { CustomerShell } from '../components/CustomerShell'
 import { ReconnectingBanner } from '../components/ReconnectingBanner'
 import { useQueueSocket } from '../hooks/useQueueSocket'
 import { isNearTurn, useTurnAlerts } from '../hooks/useTurnAlerts'
@@ -72,14 +74,14 @@ export function TicketPage() {
     !token || (ticket.error instanceof ApiError && ticket.error.status === 404)
 
   return (
-    <main className="mx-auto flex max-w-sm flex-col gap-4 px-5 pt-8">
-      <p className="text-center text-lg font-bold">QueueLess</p>
-
+    <CustomerShell>
       {isMissing && (
-        <p className="text-center text-gray-600">Ticket not found.</p>
+        <p className="card p-6 text-center font-medium text-stone-600">
+          Ticket not found.
+        </p>
       )}
       {ticket.isError && !isMissing && (
-        <p role="alert" className="text-center">
+        <p role="alert" className="notice-error">
           {getErrorMessage(ticket.error)}
         </p>
       )}
@@ -88,49 +90,63 @@ export function TicketPage() {
         <>
           {isReconnecting && <ReconnectingBanner />}
           {isNearTurn(ticket.data) && (
-            <p
-              role="status"
-              className="rounded-md border-2 border-dashed border-gray-500 bg-gray-100 px-3 py-2 text-center"
-            >
+            <p role="status" className="notice-warning justify-center">
+              <BellRing className="size-4 shrink-0" />
               Almost your turn! Please head to the shop.
             </p>
           )}
-          <p className="text-center text-sm text-gray-600">
-            {ticket.data.queueName}
-          </p>
-          <div className="text-center">
-            {status === 'called' ? (
-              <p className="text-4xl font-bold">Your turn!</p>
-            ) : (
-              <p className="text-sm text-gray-600">Your ticket</p>
-            )}
-            <p className="text-7xl font-bold">#{ticket.data.number}</p>
-            <p className="mt-2 font-bold">
-              {status === 'called'
-                ? 'Please go to the counter now.'
-                : statusLabels[ticket.data.status]}
-            </p>
-          </div>
 
-          {ticket.data.position !== null && ticket.data.etaMinutes !== null && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-md border-2 border-gray-900 p-3 text-center">
-                <p className="text-2xl font-bold">{ticket.data.position}</p>
-                <p className="text-sm text-gray-600">people ahead</p>
-              </div>
-              <div className="rounded-md border-2 border-gray-900 p-3 text-center">
-                <p className="text-2xl font-bold">
-                  {ticket.data.etaMinutes} min
+          <div className="card overflow-hidden">
+            <div className="hero px-6 py-8 text-center">
+              {status === 'called' && (
+                <span className="absolute inset-0 bg-white/10 motion-safe:animate-pulse" />
+              )}
+              <div className="relative">
+                <p className="text-sm font-semibold">{ticket.data.queueName}</p>
+                {status === 'called' ? (
+                  <p className="mt-2 text-4xl font-extrabold tracking-tight">
+                    Your turn!
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm font-semibold">Your ticket</p>
+                )}
+                <p className="mt-1 text-7xl font-extrabold tracking-tight">
+                  #{ticket.data.number}
                 </p>
-                <p className="text-sm text-gray-600">estimated wait</p>
+                <p className="mt-3 font-bold">
+                  {status === 'called'
+                    ? 'Please go to the counter now.'
+                    : statusLabels[ticket.data.status]}
+                </p>
               </div>
             </div>
-          )}
+
+            {ticket.data.position !== null &&
+              ticket.data.etaMinutes !== null && (
+                <div className="grid grid-cols-2 divide-x divide-stone-200 border-t-2 border-dashed border-stone-200">
+                  <div className="p-4 text-center">
+                    <Users className="mx-auto mb-1 size-5 text-brand" />
+                    <p className="text-2xl font-extrabold">
+                      {ticket.data.position}
+                    </p>
+                    <p className="text-sm text-stone-600">people ahead</p>
+                  </div>
+                  <div className="p-4 text-center">
+                    <Clock className="mx-auto mb-1 size-5 text-brand" />
+                    <p className="text-2xl font-extrabold">
+                      {ticket.data.etaMinutes} min
+                    </p>
+                    <p className="text-sm text-stone-600">estimated wait</p>
+                  </div>
+                </div>
+              )}
+          </div>
 
           {status === 'waiting' &&
             (ticket.data.checkedIn ? (
               <p className="text-center">
-                <span className="rounded-full bg-gray-900 px-3 py-1 text-sm font-bold text-white">
+                <span className="pill bg-emerald-100 px-4 py-2 text-sm text-emerald-800">
+                  <CircleCheck className="size-4" />
                   Checked in
                 </span>
               </p>
@@ -138,20 +154,21 @@ export function TicketPage() {
               <button
                 type="button"
                 onClick={() => checkIn.mutate()}
-                className="w-full rounded-md bg-gray-900 px-4 py-2 font-bold text-white"
+                className="btn-primary w-full"
               >
+                <MapPin className="size-4" />
                 I'm here
               </button>
             ))}
           {status === 'waiting' && <AlertPermission />}
           {checkIn.isError && (
-            <p role="alert" className="text-center">
+            <p role="alert" className="notice-error">
               {getErrorMessage(checkIn.error)}
             </p>
           )}
 
           {cancel.isError && (
-            <p role="alert" className="text-center">
+            <p role="alert" className="notice-error">
               {getErrorMessage(cancel.error)}
             </p>
           )}
@@ -160,13 +177,13 @@ export function TicketPage() {
               type="button"
               disabled={cancel.isPending}
               onClick={() => cancel.mutate()}
-              className="mt-4 w-full rounded-md border-2 border-gray-900 px-4 py-2 font-bold disabled:opacity-60"
+              className="btn-secondary mt-2 w-full"
             >
               Cancel ticket
             </button>
           )}
         </>
       )}
-    </main>
+    </CustomerShell>
   )
 }

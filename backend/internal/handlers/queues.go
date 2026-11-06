@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -17,6 +16,7 @@ import (
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
 	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
 	"github.com/vidurukalpana/QueueLess/backend/internal/middleware"
+	"github.com/vidurukalpana/QueueLess/backend/internal/validate"
 )
 
 // Queues handles queue management.
@@ -34,11 +34,6 @@ func NewQueues(queries *db.Queries, location *time.Location, notifier *Notifier)
 type createQueueRequest struct {
 	Name string `json:"name"`
 }
-
-const (
-	minMaxWaiting = 1
-	maxMaxWaiting = 500
-)
 
 // optionalInt separates a missing field from an explicit null.
 type optionalInt struct {
@@ -102,9 +97,9 @@ func (q *Queues) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := strings.TrimSpace(input.Name)
-	if name == "" {
-		httpx.WriteError(w, http.StatusBadRequest, "name is required")
+	name, valid := validate.Name(input.Name, validate.MaxQueueName)
+	if !valid {
+		httpx.WriteError(w, http.StatusBadRequest, "name must be 1 to 80 characters")
 		return
 	}
 
@@ -188,12 +183,12 @@ func (q *Queues) Update(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "nothing to update")
 		return
 	}
-	if input.Status != nil && !isQueueStatus(*input.Status) {
+	if input.Status != nil && !validate.QueueStatus(*input.Status) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid status")
 		return
 	}
 
-	if value := input.MaxWaiting.Value; value != nil && (*value < minMaxWaiting || *value > maxMaxWaiting) {
+	if value := input.MaxWaiting.Value; value != nil && !validate.QueueSize(*value) {
 		httpx.WriteError(w, http.StatusBadRequest, "maxWaiting must be 1 to 500")
 		return
 	}
@@ -249,11 +244,11 @@ func (q *Queues) RegenerateJoinCode(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, joinCodeResponse{JoinCode: updated.JoinCode})
 }
 
-// parseID reads the id in the URL, answering 404 when it is malformed.
+// parseID reads the id in the URL, answering 400 when it is malformed.
 func parseID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	id, err := validate.ID(chi.URLParam(r, "id"))
 	if err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "not found")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid id")
 		return uuid.Nil, false
 	}
 	return id, true
@@ -294,13 +289,4 @@ func (q *Queues) toOwnerResponse(queue db.Queue) ownerQueueResponse {
 		response.MaxWaiting = &queue.MaxWaiting.Int32
 	}
 	return response
-}
-
-func isQueueStatus(status string) bool {
-	switch status {
-	case "open", "paused", "closed":
-		return true
-	default:
-		return false
-	}
 }

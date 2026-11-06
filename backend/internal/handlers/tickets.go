@@ -7,9 +7,7 @@ import (
 	"log"
 	"net/http"
 	"slices"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -18,6 +16,7 @@ import (
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
 	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
 	"github.com/vidurukalpana/QueueLess/backend/internal/queue"
+	"github.com/vidurukalpana/QueueLess/backend/internal/validate"
 )
 
 const (
@@ -26,8 +25,7 @@ const (
 	statusDone    = "done"
 	statusSkipped = "skipped"
 
-	queueStatusOpen       = "open"
-	maxCustomerNameLength = 40
+	queueStatusOpen = "open"
 )
 
 var errQueueNotOpen = errors.New("queue is not open")
@@ -172,8 +170,8 @@ func (t *Tickets) Join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := strings.TrimSpace(input.Name)
-	if length := utf8.RuneCountInString(name); length < 1 || length > maxCustomerNameLength {
+	name, valid := validate.Name(input.Name, validate.MaxCustomerName)
+	if !valid {
 		httpx.WriteError(w, http.StatusBadRequest, "name must be 1 to 40 characters")
 		return
 	}

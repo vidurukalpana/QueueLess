@@ -4,8 +4,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"net/mail"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -15,12 +13,10 @@ import (
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
 	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
 	"github.com/vidurukalpana/QueueLess/backend/internal/middleware"
+	"github.com/vidurukalpana/QueueLess/backend/internal/validate"
 )
 
 const (
-	minPasswordLength = 8
-	// bcrypt rejects passwords longer than 72 bytes.
-	maxPasswordBytes    = 72
 	uniqueViolationCode = "23505"
 	invalidLoginMessage = "invalid email or password"
 )
@@ -58,12 +54,12 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email := normalizeEmail(input.Email)
-	if !isValidEmail(email) {
+	email, ok := validate.Email(input.Email)
+	if !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid email")
 		return
 	}
-	if len(input.Password) < minPasswordLength || len(input.Password) > maxPasswordBytes {
+	if !validate.Password(input.Password) {
 		httpx.WriteError(w, http.StatusBadRequest, "password must be 8 to 72 characters")
 		return
 	}
@@ -97,7 +93,13 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.queries.GetUserByEmail(r.Context(), normalizeEmail(input.Email))
+	email, ok := validate.Email(input.Email)
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, invalidLoginMessage)
+		return
+	}
+
+	user, err := a.queries.GetUserByEmail(r.Context(), email)
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusUnauthorized, invalidLoginMessage)
 		return
@@ -149,15 +151,6 @@ func (a *Auth) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, ownerResponse{ID: user.ID, Email: user.Email})
-}
-
-func normalizeEmail(email string) string {
-	return strings.ToLower(strings.TrimSpace(email))
-}
-
-func isValidEmail(email string) bool {
-	address, err := mail.ParseAddress(email)
-	return err == nil && address.Address == email
 }
 
 func isUniqueViolation(err error) bool {
