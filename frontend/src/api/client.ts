@@ -1,4 +1,4 @@
-import type { ErrorResponse } from './types'
+import type { ErrorResponse, TicketStatusResponse } from './types'
 
 const baseUrl: string = import.meta.env.VITE_API_URL
 
@@ -63,6 +63,15 @@ export function apiPatch<T>(
   token?: string,
 ): Promise<T> {
   return sendJson<T>('PATCH', path, body, token)
+}
+
+export function getTicket(
+  ticketId: string,
+  token: string,
+): Promise<TicketStatusResponse> {
+  return request<TicketStatusResponse>(`/api/tickets/${ticketId}`, {
+    headers: { 'X-Ticket-Token': token },
+  })
 }
 
 export function getErrorMessage(error: unknown): string {

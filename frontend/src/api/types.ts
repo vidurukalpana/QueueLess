@@ -49,3 +49,27 @@ export interface OwnerTicket {
 export interface CallNextResponse {
   ticket: OwnerTicket | null
 }
+
+export interface PublicQueue {
+  name: string
+  status: QueueStatus
+}
+
+export interface JoinQueueRequest {
+  name: string
+}
+
+export interface JoinQueueResponse {
+  ticketId: string
+  number: number
+  token: string
+}
+
+export interface TicketStatusResponse {
+  number: number
+  status: TicketStatus
+  position: number | null
+  etaMinutes: number | null
+  queueName: string
+  queueId: string
+}
