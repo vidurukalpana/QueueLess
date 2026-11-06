@@ -50,6 +50,7 @@ type ownerTicketResponse struct {
 	Number       int32      `json:"number"`
 	CustomerName string     `json:"customerName"`
 	Status       string     `json:"status"`
+	CheckedIn    bool       `json:"checkedIn"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	CalledAt     *time.Time `json:"calledAt"`
 }
@@ -325,6 +326,7 @@ func (t *Tickets) toResponse(ticket db.Ticket) ownerTicketResponse {
 		Number:       ticket.Number,
 		CustomerName: ticket.CustomerName,
 		Status:       ticket.Status,
+		CheckedIn:    ticket.CheckedInAt != nil,
 		CreatedAt:    ticket.CreatedAt.In(t.location),
 	}
 	if ticket.CalledAt != nil {

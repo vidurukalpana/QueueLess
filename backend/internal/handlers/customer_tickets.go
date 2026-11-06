@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -28,6 +29,11 @@ type ticketStatusResponse struct {
 	ETAMinutes *int      `json:"etaMinutes"`
 	QueueName  string    `json:"queueName"`
 	QueueID    uuid.UUID `json:"queueId"`
+	CheckedIn  bool      `json:"checkedIn"`
+}
+
+type checkInResponse struct {
+	CheckedInAt time.Time `json:"checkedInAt"`
 }
 
 // GetStatus returns a customer's ticket with its wait estimate.
@@ -65,6 +71,7 @@ func (t *Tickets) ticketStatus(ctx context.Context, ticket db.Ticket) (ticketSta
 		Status:    current.Status,
 		QueueName: owningQueue.Name,
 		QueueID:   owningQueue.ID,
+		CheckedIn: current.CheckedInAt != nil,
 	}
 	if current.Status != statusWaiting {
 		return response, nil
@@ -110,6 +117,38 @@ func (t *Tickets) Cancel(w http.ResponseWriter, r *http.Request) {
 		t.notifier.QueueChanged(r.Context(), ticket.QueueID)
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// CheckIn records that the customer arrived. Repeat calls keep the first time.
+func (t *Tickets) CheckIn(w http.ResponseWriter, r *http.Request) {
+	ticket, ok := t.requireTicketToken(w, r)
+	if !ok {
+		return
+	}
+
+	if ticket.CheckedInAt != nil {
+		httpx.WriteJSON(w, http.StatusOK, checkInResponse{CheckedInAt: ticket.CheckedInAt.In(t.location)})
+		return
+	}
+	if ticket.Status != statusWaiting && ticket.Status != statusCalled {
+		httpx.WriteError(w, http.StatusConflict, "ticket status does not allow this action")
+		return
+	}
+
+	updated, err := t.queries.CheckInTicket(r.Context(), ticket.ID)
+	if err != nil {
+		log.Printf("check in ticket: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	if updated.CheckedInAt == nil {
+		log.Printf("check in ticket %s: no time stored", ticket.ID)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	t.notifier.QueueChanged(r.Context(), ticket.QueueID)
+	httpx.WriteJSON(w, http.StatusOK, checkInResponse{CheckedInAt: updated.CheckedInAt.In(t.location)})
 }
 
 // requireTicketToken loads the ticket in the URL, answering 404 unless the token matches.

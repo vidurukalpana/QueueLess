@@ -67,6 +67,7 @@ func run() error {
 	router.Post("/api/queues/{id}/tickets", ticketHandler.Join)
 	router.Get("/api/tickets/{id}", ticketHandler.GetStatus)
 	router.Delete("/api/tickets/{id}", ticketHandler.Cancel)
+	router.Post("/api/tickets/{id}/checkin", ticketHandler.CheckIn)
 	router.Get("/ws/queues/{id}", socketHandler.Connect)
 
 	router.Group(func(owner chi.Router) {
