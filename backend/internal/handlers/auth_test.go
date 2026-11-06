@@ -15,6 +15,8 @@ import (
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
 )
 
+const testJWTSecret = "test-secret"
+
 func register(handler *Auth, body string) *httptest.ResponseRecorder {
 	request := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
 	recorder := httptest.NewRecorder()
@@ -25,7 +27,7 @@ func register(handler *Auth, body string) *httptest.ResponseRecorder {
 func TestRegisterCreatesOwner(t *testing.T) {
 	queries := db.New(newTestPool(t))
 
-	response := register(NewAuth(queries), `{"email":" Owner@Example.com ","password":"password123"}`)
+	response := register(NewAuth(queries, testJWTSecret), `{"email":" Owner@Example.com ","password":"password123"}`)
 
 	require.Equal(t, http.StatusCreated, response.Code)
 	var owner ownerResponse
@@ -39,7 +41,7 @@ func TestRegisterCreatesOwner(t *testing.T) {
 }
 
 func TestRegisterRejectsDuplicateEmail(t *testing.T) {
-	handler := NewAuth(db.New(newTestPool(t)))
+	handler := NewAuth(db.New(newTestPool(t)), testJWTSecret)
 	require.Equal(t, http.StatusCreated, register(handler, `{"email":"owner@example.com","password":"password123"}`).Code)
 
 	response := register(handler, `{"email":"OWNER@example.com","password":"different123"}`)
@@ -49,7 +51,7 @@ func TestRegisterRejectsDuplicateEmail(t *testing.T) {
 }
 
 func TestRegisterRejectsInvalidInput(t *testing.T) {
-	handler := NewAuth(db.New(newTestPool(t)))
+	handler := NewAuth(db.New(newTestPool(t)), testJWTSecret)
 	tests := []struct {
 		name string
 		body string
@@ -63,6 +65,46 @@ func TestRegisterRejectsInvalidInput(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, register(handler, test.body).Code)
+		})
+	}
+}
+
+func login(handler *Auth, body string) *httptest.ResponseRecorder {
+	request := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	recorder := httptest.NewRecorder()
+	handler.Login(recorder, request)
+	return recorder
+}
+
+func TestLoginReturnsToken(t *testing.T) {
+	handler := NewAuth(db.New(newTestPool(t)), testJWTSecret)
+	require.Equal(t, http.StatusCreated, register(handler, `{"email":"owner@example.com","password":"password123"}`).Code)
+
+	response := login(handler, `{"email":"Owner@Example.com","password":"password123"}`)
+
+	require.Equal(t, http.StatusOK, response.Code)
+	var body loginResponse
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &body))
+	assert.NotEmpty(t, body.Token)
+}
+
+func TestLoginRejectsInvalidCredentials(t *testing.T) {
+	handler := NewAuth(db.New(newTestPool(t)), testJWTSecret)
+	require.Equal(t, http.StatusCreated, register(handler, `{"email":"owner@example.com","password":"password123"}`).Code)
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "wrong password", body: `{"email":"owner@example.com","password":"wrong-password"}`},
+		{name: "unknown email", body: `{"email":"nobody@example.com","password":"password123"}`},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			response := login(handler, test.body)
+
+			assert.Equal(t, http.StatusUnauthorized, response.Code)
+			assert.JSONEq(t, `{"error":"invalid email or password"}`, response.Body.String())
 		})
 	}
 }

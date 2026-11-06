@@ -22,6 +22,7 @@ type Config struct {
 	Location    *time.Location
 	FrontendURL string
 	DatabaseURL string
+	JWTSecret   string
 }
 
 // Load reads the configuration from the environment.
@@ -36,6 +37,11 @@ func Load() (Config, error) {
 		return Config{}, errors.New("DATABASE_URL is required")
 	}
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return Config{}, errors.New("JWT_SECRET is required")
+	}
+
 	timezone := getEnv("APP_TIMEZONE", defaultTimezone)
 
 	location, err := time.LoadLocation(timezone)
@@ -48,6 +54,7 @@ func Load() (Config, error) {
 		Location:    location,
 		FrontendURL: getEnv("FRONTEND_URL", defaultFrontendURL),
 		DatabaseURL: databaseURL,
+		JWTSecret:   jwtSecret,
 	}, nil
 }
 

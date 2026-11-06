@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/vidurukalpana/QueueLess/backend/internal/auth"
@@ -20,16 +21,18 @@ const (
 	// bcrypt rejects passwords longer than 72 bytes.
 	maxPasswordBytes    = 72
 	uniqueViolationCode = "23505"
+	invalidLoginMessage = "invalid email or password"
 )
 
 // Auth handles owner accounts.
 type Auth struct {
-	queries *db.Queries
+	queries   *db.Queries
+	jwtSecret string
 }
 
 // NewAuth creates the owner account handlers.
-func NewAuth(queries *db.Queries) *Auth {
-	return &Auth{queries: queries}
+func NewAuth(queries *db.Queries, jwtSecret string) *Auth {
+	return &Auth{queries: queries, jwtSecret: jwtSecret}
 }
 
 type credentials struct {
@@ -42,6 +45,10 @@ type ownerResponse struct {
 	Email string    `json:"email"`
 }
 
+type loginResponse struct {
+	Token string `json:"token"`
+}
+
 // Register creates an owner account.
 func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 	var input credentials
@@ -50,7 +57,7 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email := strings.ToLower(strings.TrimSpace(input.Email))
+	email := normalizeEmail(input.Email)
 	if !isValidEmail(email) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid email")
 		return
@@ -79,6 +86,50 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, http.StatusCreated, ownerResponse{ID: user.ID, Email: user.Email})
+}
+
+// Login exchanges owner credentials for a JWT.
+func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
+	var input credentials
+	if err := httpx.DecodeJSON(w, r, &input); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	user, err := a.queries.GetUserByEmail(r.Context(), normalizeEmail(input.Email))
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusUnauthorized, invalidLoginMessage)
+		return
+	}
+	if err != nil {
+		log.Printf("login: get user: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	matches, err := auth.CheckPassword(user.PasswordHash, input.Password)
+	if err != nil {
+		log.Printf("login: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	if !matches {
+		httpx.WriteError(w, http.StatusUnauthorized, invalidLoginMessage)
+		return
+	}
+
+	token, err := auth.SignToken(user.ID, a.jwtSecret)
+	if err != nil {
+		log.Printf("login: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, loginResponse{Token: token})
+}
+
+func normalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 func isValidEmail(email string) bool {
