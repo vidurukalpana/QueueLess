@@ -63,6 +63,12 @@ export function QueuePage() {
                   {label}
                 </button>
               ))}
+              <Link
+                to={`/dashboard/queues/${queue.id}/stats`}
+                className="rounded-md border-2 border-gray-900 px-4 py-2 font-bold"
+              >
+                View stats
+              </Link>
             </div>
           </div>
           {updateStatus.isError && (

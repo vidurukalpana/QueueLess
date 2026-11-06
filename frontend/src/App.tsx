@@ -7,6 +7,7 @@ import { JoinPage } from './pages/JoinPage'
 import { LoginPage } from './pages/LoginPage'
 import { QueuePage } from './pages/QueuePage'
 import { RegisterPage } from './pages/RegisterPage'
+import { StatsPage } from './pages/StatsPage'
 import { TicketPage } from './pages/TicketPage'
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
           <Route element={<OwnerLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/dashboard/queues/:id" element={<QueuePage />} />
+            <Route path="/dashboard/queues/:id/stats" element={<StatsPage />} />
           </Route>
         </Route>
         <Route path="/q/:queueId" element={<JoinPage />} />

@@ -18,12 +18,14 @@ export function QueueCard({ queue }: QueueCardProps) {
           ? 'Accepting customers'
           : 'Not accepting new customers'}
       </p>
-      <Link
-        to={`/dashboard/queues/${queue.id}`}
-        className="mt-2 inline-block text-sm underline"
-      >
-        Manage
-      </Link>
+      <p className="mt-2 flex gap-3 text-sm">
+        <Link to={`/dashboard/queues/${queue.id}`} className="underline">
+          Manage
+        </Link>
+        <Link to={`/dashboard/queues/${queue.id}/stats`} className="underline">
+          Stats
+        </Link>
+      </p>
     </article>
   )
 }
