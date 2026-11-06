@@ -1,3 +1,8 @@
 docs/dev/
 .DS_Store
 .env
+node_modules/
+dist/
+backend/server
+*.test
+*.out
