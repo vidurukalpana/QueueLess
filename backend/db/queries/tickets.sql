@@ -34,6 +34,13 @@ SET status = sqlc.arg(status)::text,
 WHERE id = sqlc.arg(id)
 RETURNING *;
 
+-- name: CompleteCalledTickets :exec
+UPDATE tickets
+SET status = 'done',
+    done_at = now()
+WHERE queue_id = $1
+  AND status = 'called';
+
 -- name: GetFirstWaitingTicket :one
 SELECT * FROM tickets
 WHERE queue_id = $1

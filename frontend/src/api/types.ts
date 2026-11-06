@@ -33,3 +33,19 @@ export interface Queue {
 export interface CreateQueueRequest {
   name: string
 }
+
+export type TicketStatus =
+  'waiting' | 'called' | 'done' | 'skipped' | 'cancelled'
+
+export interface OwnerTicket {
+  id: string
+  number: number
+  customerName: string
+  status: TicketStatus
+  createdAt: string
+  calledAt: string | null
+}
+
+export interface CallNextResponse {
+  ticket: OwnerTicket | null
+}

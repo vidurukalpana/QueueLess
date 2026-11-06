@@ -24,6 +24,19 @@ func (q *Queries) CancelStaleTickets(ctx context.Context, queueID uuid.UUID) err
 	return err
 }
 
+const completeCalledTickets = `-- name: CompleteCalledTickets :exec
+UPDATE tickets
+SET status = 'done',
+    done_at = now()
+WHERE queue_id = $1
+  AND status = 'called'
+`
+
+func (q *Queries) CompleteCalledTickets(ctx context.Context, queueID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, completeCalledTickets, queueID)
+	return err
+}
+
 const createTicket = `-- name: CreateTicket :one
 INSERT INTO tickets (queue_id, number, customer_name, token)
 VALUES ($1, $2, $3, $4)

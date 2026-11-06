@@ -55,6 +55,26 @@ func (q *Queries) GetQueue(ctx context.Context, id uuid.UUID) (Queue, error) {
 	return i, err
 }
 
+const getQueueForUpdate = `-- name: GetQueueForUpdate :one
+SELECT id, owner_id, name, status, avg_service_minutes, created_at FROM queues
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) GetQueueForUpdate(ctx context.Context, id uuid.UUID) (Queue, error) {
+	row := q.db.QueryRow(ctx, getQueueForUpdate, id)
+	var i Queue
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Name,
+		&i.Status,
+		&i.AvgServiceMinutes,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listQueuesByOwner = `-- name: ListQueuesByOwner :many
 SELECT id, owner_id, name, status, avg_service_minutes, created_at FROM queues
 WHERE owner_id = $1

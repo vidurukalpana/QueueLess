@@ -102,9 +102,8 @@ func (q *Queues) List(w http.ResponseWriter, r *http.Request) {
 
 // GetPublic returns the details anyone may see.
 func (q *Queues) GetPublic(w http.ResponseWriter, r *http.Request) {
-	queueID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "not found")
+	queueID, ok := parseID(w, r)
+	if !ok {
 		return
 	}
 
@@ -124,7 +123,11 @@ func (q *Queues) GetPublic(w http.ResponseWriter, r *http.Request) {
 
 // Update changes a queue's status.
 func (q *Queues) Update(w http.ResponseWriter, r *http.Request) {
-	queue, ok := q.requireQueueOwner(w, r)
+	queueID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	queue, ok := requireQueueOwner(w, r, q.queries, queueID)
 	if !ok {
 		return
 	}
@@ -149,21 +152,25 @@ func (q *Queues) Update(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, q.toOwnerResponse(updated))
 }
 
-// requireQueueOwner loads the queue in the URL, answering 404 unless the caller owns it.
-func (q *Queues) requireQueueOwner(w http.ResponseWriter, r *http.Request) (db.Queue, bool) {
+// parseID reads the id in the URL, answering 404 when it is malformed.
+func parseID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return uuid.Nil, false
+	}
+	return id, true
+}
+
+// requireQueueOwner loads a queue, answering 404 unless the caller owns it.
+func requireQueueOwner(w http.ResponseWriter, r *http.Request, queries *db.Queries, queueID uuid.UUID) (db.Queue, bool) {
 	ownerID, ok := middleware.UserID(r.Context())
 	if !ok {
 		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return db.Queue{}, false
 	}
 
-	queueID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "not found")
-		return db.Queue{}, false
-	}
-
-	queue, err := q.queries.GetQueue(r.Context(), queueID)
+	queue, err := queries.GetQueue(r.Context(), queueID)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && queue.OwnerID != ownerID) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return db.Queue{}, false

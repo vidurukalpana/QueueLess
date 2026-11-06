@@ -4,6 +4,7 @@ import { apiGet, apiPatch, getErrorMessage } from '../api/client'
 import type { Queue, QueueStatus } from '../api/types'
 import { QueueStatusBadge } from '../components/QueueStatusBadge'
 import { ShareQueue } from '../components/ShareQueue'
+import { TicketList } from '../components/TicketList'
 import { useAuth } from '../hooks/useAuth'
 
 const statusActions: { status: QueueStatus; label: string }[] = [
@@ -72,7 +73,8 @@ export function QueuePage() {
               {getErrorMessage(updateStatus.error)}
             </p>
           )}
-          <div className="max-w-xs">
+          <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
+            <TicketList queueId={queue.id} />
             <ShareQueue queueId={queue.id} />
           </div>
         </>
