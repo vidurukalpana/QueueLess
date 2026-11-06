@@ -36,16 +36,33 @@ export function apiGet<T>(path: string, token?: string): Promise<T> {
   return request<T>(path, { headers: authHeaders(token) })
 }
 
-export function apiPost<T>(
+function sendJson<T>(
+  method: string,
   path: string,
   body: unknown,
   token?: string,
 ): Promise<T> {
   return request<T>(path, {
-    method: 'POST',
+    method,
     headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
     body: JSON.stringify(body),
   })
+}
+
+export function apiPost<T>(
+  path: string,
+  body: unknown,
+  token?: string,
+): Promise<T> {
+  return sendJson<T>('POST', path, body, token)
+}
+
+export function apiPatch<T>(
+  path: string,
+  body: unknown,
+  token?: string,
+): Promise<T> {
+  return sendJson<T>('PATCH', path, body, token)
 }
 
 export function getErrorMessage(error: unknown): string {
