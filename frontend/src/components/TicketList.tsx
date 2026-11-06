@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, getErrorMessage } from '../api/client'
 import type { CallNextResponse, OwnerTicket } from '../api/types'
+import { ReconnectingBanner } from './ReconnectingBanner'
 import { useAuth } from '../hooks/useAuth'
+import { useQueueSocket } from '../hooks/useQueueSocket'
 
 const smallButton =
   'rounded-md border-2 border-gray-900 px-3 py-0.5 text-sm font-bold disabled:opacity-60'
@@ -14,6 +16,7 @@ export function TicketList({ queueId }: TicketListProps) {
   const { token } = useAuth()
   const queryClient = useQueryClient()
   const queryKey = ['tickets', queueId]
+  const { isReconnecting } = useQueueSocket(queueId)
   const tickets = useQuery({
     queryKey,
     queryFn: () =>
@@ -48,6 +51,7 @@ export function TicketList({ queueId }: TicketListProps) {
 
   return (
     <section className="rounded-md border-2 border-gray-900 p-4">
+      {isReconnecting && <ReconnectingBanner />}
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-gray-600">Now serving</p>

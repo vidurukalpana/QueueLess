@@ -20,11 +20,12 @@ import (
 type Queues struct {
 	queries  *db.Queries
 	location *time.Location
+	notifier *Notifier
 }
 
 // NewQueues creates the queue handlers.
-func NewQueues(queries *db.Queries, location *time.Location) *Queues {
-	return &Queues{queries: queries, location: location}
+func NewQueues(queries *db.Queries, location *time.Location, notifier *Notifier) *Queues {
+	return &Queues{queries: queries, location: location, notifier: notifier}
 }
 
 type createQueueRequest struct {
@@ -149,6 +150,7 @@ func (q *Queues) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	q.notifier.QueueChanged(r.Context(), queue.ID)
 	httpx.WriteJSON(w, http.StatusOK, q.toOwnerResponse(updated))
 }
 

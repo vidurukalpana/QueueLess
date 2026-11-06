@@ -73,3 +73,18 @@ export interface TicketStatusResponse {
   queueName: string
   queueId: string
 }
+
+export interface WaitingTicket {
+  ticketId: string
+  number: number
+}
+
+export interface QueueUpdatedMessage {
+  type: 'queue_updated'
+  queueId: string
+  status: QueueStatus
+  nowServing: number | null
+  waiting: WaitingTicket[]
+}
+
+export type ServerMessage = QueueUpdatedMessage

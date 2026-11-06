@@ -19,6 +19,7 @@ import (
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
 	"github.com/vidurukalpana/QueueLess/backend/internal/handlers"
 	"github.com/vidurukalpana/QueueLess/backend/internal/middleware"
+	"github.com/vidurukalpana/QueueLess/backend/internal/ws"
 )
 
 const (
@@ -47,20 +48,26 @@ func run() error {
 	}
 	defer pool.Close()
 
+	hub := ws.NewHub(cfg.FrontendURL)
+	go hub.Run(ctx)
+
 	router := chi.NewRouter()
 	router.Use(middleware.CORS(cfg.FrontendURL))
 	router.Get("/health", handlers.Health(pool))
 
 	queries := db.New(pool)
 	authHandler := handlers.NewAuth(queries, cfg.JWTSecret)
-	queueHandler := handlers.NewQueues(queries, cfg.Location)
-	ticketHandler := handlers.NewTickets(pool, queries, cfg.Location)
+	notifier := handlers.NewNotifier(queries, hub)
+	queueHandler := handlers.NewQueues(queries, cfg.Location, notifier)
+	ticketHandler := handlers.NewTickets(pool, queries, cfg.Location, notifier)
+	socketHandler := handlers.NewSocket(queries, hub)
 	router.Post("/api/auth/register", authHandler.Register)
 	router.Post("/api/auth/login", authHandler.Login)
 	router.Get("/api/queues/{id}", queueHandler.GetPublic)
 	router.Post("/api/queues/{id}/tickets", ticketHandler.Join)
 	router.Get("/api/tickets/{id}", ticketHandler.GetStatus)
 	router.Delete("/api/tickets/{id}", ticketHandler.Cancel)
+	router.Get("/ws/queues/{id}", socketHandler.Connect)
 
 	router.Group(func(owner chi.Router) {
 		owner.Use(middleware.Authenticate(cfg.JWTSecret))
