@@ -160,8 +160,9 @@ ol {
   overflow: hidden;
   padding: 72px 0 0;
   background:
-    radial-gradient(44rem 26rem at 88% 0%, #ffedd5 0%, transparent 70%),
-    radial-gradient(34rem 22rem at 0% 78%, #fff1e3 0%, transparent 70%), #fff;
+    radial-gradient(46rem 30rem at 92% -6%, #fb923c 0%, transparent 68%),
+    radial-gradient(36rem 26rem at -4% 88%, #fdba74 0%, transparent 70%),
+    linear-gradient(160deg, #ffedd5 0%, #fed7aa 100%);
 }
 
 .hero .wrap {
@@ -177,13 +178,13 @@ ol {
 }
 
 .hero h1 span {
-  color: var(--brand);
+  color: var(--brand-dark);
 }
 
 .hero-text {
   max-width: 640px;
   margin-top: 18px;
-  color: var(--body);
+  color: #44403c;
   font-size: 20px;
 }
 
