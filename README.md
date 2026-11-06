@@ -9,7 +9,7 @@ A virtual queue web app that lets customers join a shop's queue from their phone
 - Shop owners lose customers who walk away when they see a crowd.
 - Existing queue systems are paid and too complex for a small shop.
 
-## MVP features
+## Features
 
 QueueLess has two sides: a customer view (no login) and an owner dashboard (login).
 
@@ -23,14 +23,6 @@ QueueLess has two sides: a customer view (no login) and an owner dashboard (logi
 8. **Arrival check-in:** remote customers tap **I'm here** on arrival, and the owner sees who is present.
 9. **Turn alert:** customers get a notification when two people are ahead.
 10. **Stats page:** customers served today and average wait.
-
-## Out of scope
-
-Not part of the MVP; these may come later:
-
-- Multiple counters per queue
-- SMS notifications
-- Web Push alerts while the browser is closed
 
 ## Tech stack
 
@@ -46,6 +38,6 @@ Not part of the MVP; these may come later:
 
 All times use Sri Lanka Standard Time (`Asia/Colombo`, UTC+05:30).
 
-## How to run
+## Architecture
 
-Setup instructions will be added once the app is runnable.
+![QueueLess high-level architecture](docs/architecture.png)
