@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QueueLess – Virtual Queue Web App</title>
+    <meta
+      name="description"
+      content="QueueLess lets customers join a shop's queue from their phone and wait anywhere. Built with Go, React, TypeScript and PostgreSQL."
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <nav class="nav" aria-label="Main">
+      <div class="wrap nav-inner">
+        <a class="logo" href="#top"><img src="favicon.svg" alt="" /><b>Queue<span>Less</span></b></a>
+        <button class="nav-toggle" type="button" aria-expanded="false">Menu</button>
+        <div class="nav-links">
+          <a href="#problem">Problem</a>
+          <a href="#solution">Solution</a>
+          <a href="#tour">App Tour</a>
+          <a href="#features">Features</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#data-flow">Data Flow</a>
+          <a href="#tech">Tech</a>
+          <a href="#security">Security</a>
+        </div>
+      </div>
+    </nav>
+
+    <header class="hero" id="top">
+      <div class="wrap">
+        <h1>Less waiting, <span>more customers.</span></h1>
+        <p class="hero-text">
+          QueueLess is a virtual queue web app for small shops. Customers join from their phone,
+          then wait anywhere instead of sitting in the shop.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#tour">See How It Works</a>
+          <a class="button button-ghost" href="https://github.com/vidurukalpana/QueueLess">View on GitHub</a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><strong>0 apps</strong>Nothing to install</div>
+          <div class="hero-stat"><strong>1 scan</strong>QR code to join the queue</div>
+          <div class="hero-stat"><strong>Live</strong>Every screen updates instantly</div>
+        </div>
+        <div class="hero-visual">
+          <img class="hero-desktop" src="images/05-queue-control.png" width="1920" height="1310" alt="Owner's queue control page with a live ticket list" />
+          <img class="hero-phone" src="images/09-your-turn.png" width="780" height="1560" alt="Customer's phone showing Your turn" />
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="problem">
+        <div class="wrap">
+          <p class="eyebrow">The Problem</p>
+          <h2>Waiting in line wastes everyone's time</h2>
+          <p class="section-text">Customers at small shops often wait 30–90 minutes without knowing their position. Many walk away when they see a crowd, so shops lose business.</p>
+          <div class="grid cols-4">
+            <div class="card">
+              <p class="big">30–90 min</p>
+              <h3>Long waits</h3>
+              <p>Customers sit in the shop without knowing their position.</p>
+            </div>
+            <div class="card">
+              <p class="big">No idea</p>
+              <h3>Unknown wait time</h3>
+              <p>Nobody can tell how long the wait will be.</p>
+            </div>
+            <div class="card">
+              <p class="big">Lost sales</p>
+              <h3>People walk away</h3>
+              <p>Shops lose customers who see a crowd at the door.</p>
+            </div>
+            <div class="card">
+              <p class="big">Complex</p>
+              <h3>Costly tools</h3>
+              <p>Existing queue systems are paid, and hard for a small shop.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tinted" id="solution">
+        <div class="wrap">
+          <p class="eyebrow">The Solution</p>
+          <h2>One queue, two simple views</h2>
+          <p class="section-text">QueueLess moves the queue to the customer's phone. Customers join by QR code, wait anywhere, then return when their turn is near. The owner runs everything from one simple dashboard.</p>
+          <div class="grid cols-2">
+            <div class="card">
+              <div class="icon" aria-hidden="true">📱</div>
+              <h3>Customer view (no login)</h3>
+              <ul class="points">
+                <li>Scan a QR code, or open a share link</li>
+                <li>Enter a name, get a ticket number</li>
+                <li>See live position with estimated wait</li>
+                <li>Get alerted when your turn is near</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="icon" aria-hidden="true">💈</div>
+              <h3>Owner dashboard (login)</h3>
+              <ul class="points">
+                <li>Create queues with a QR code</li>
+                <li>Call next, skip or mark done</li>
+                <li>See who has arrived</li>
+                <li>Check daily stats</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tour">
+        <div class="wrap">
+          <p class="eyebrow">App Tour</p>
+          <h2>From login to the last customer</h2>
+
+          <p class="tour-title">Owner side <span class="tag">Dashboard</span></p>
+
+          <div class="step">
+            <button class="zoom" type="button"><img src="images/01-register.png" width="1920" height="1200" alt="Register page" loading="lazy" /></button>
+            <div>
+              <span class="step-number">1</span>
+              <h3>Register</h3>
+              <ul class="points">
+                <li>The owner creates an account with an email and password</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="step">
+            <button class="zoom" type="button"><img src="images/02-login.png" width="1920" height="1200" alt="Login page" loading="lazy" /></button>
+            <div>
+              <span class="step-number">2</span>
+              <h3>Log in</h3>
+              <ul class="points">
+                <li>The owner logs in to manage their queues</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="step">
+            <button class="zoom" type="button"><img src="images/03-forgot-password.png" width="1920" height="1200" alt="Forgot password page after sending a reset link" loading="lazy" /></button>
+            <div>
+              <span class="step-number">3</span>
+              <h3>Forgot password</h3>
+              <ul class="points">
+                <li>The owner can reset a forgotten password with a link</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="step">
+            <button class="zoom" type="button"><img src="images/04-dashboard.png" width="1920" height="1200" alt="Dashboard with three queues" loading="lazy" /></button>
+            <div>
+              <span class="step-number">4</span>
+              <h3>Dashboard</h3>
+              <ul class="points">
+                <li>Create a queue for each shop or counter</li>
+                <li>See which queues are open, paused or closed</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="step">
+            <button class="zoom" type="button"><img src="images/05-queue-control.png" width="1920" height="1310" alt="Queue control page with tickets, QR code and settings" loading="lazy" /></button>
+            <div>
+              <span class="step-number">5</span>
+              <h3>Queue control</h3>
+              <ul class="points">
+                <li><strong>Call next</strong> brings in the next customer</li>
+                <li><strong>Done</strong> or <strong>Skip</strong> finishes the current customer</li>
+                <li><strong>Here</strong> or <strong>Remote</strong> shows who has arrived</li>
+                <li>Share the QR code, then set the queue rules</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="step">
+            <button class="zoom" type="button"><img src="images/11-stats.png" width="1920" height="1200" alt="Daily stats page" loading="lazy" /></button>
+            <div>
+              <span class="step-number">6</span>
+              <h3>Daily stats</h3>
+              <ul class="points">
+                <li>See customers served, skipped, average wait and average service time</li>
+                <li>Pick any date</li>
+              </ul>
+            </div>
+          </div>
+
+          <p class="tour-title">Customer side <span class="tag">Phone</span></p>
+          <div class="phones">
+            <div class="phone-step">
+              <button class="zoom" type="button"><img src="images/06-join.png" width="780" height="1560" alt="Join queue page" loading="lazy" /></button>
+              <h3><span class="number">7.</span> Join</h3>
+              <p>Scan the QR code, enter a name.</p>
+            </div>
+            <div class="phone-step">
+              <button class="zoom" type="button"><img src="images/07-ticket.png" width="780" height="1560" alt="Live ticket page" loading="lazy" /></button>
+              <h3><span class="number">8.</span> Live ticket</h3>
+              <p>See people ahead and estimated wait. Tap <em>I'm here</em> on arrival.</p>
+            </div>
+            <div class="phone-step">
+              <button class="zoom" type="button"><img src="images/08-near-turn.png" width="780" height="1560" alt="Near turn alert" loading="lazy" /></button>
+              <h3><span class="number">9.</span> Turn alert</h3>
+              <p>An alert appears when two people are ahead.</p>
+            </div>
+            <div class="phone-step">
+              <button class="zoom" type="button"><img src="images/09-your-turn.png" width="780" height="1560" alt="Your turn screen" loading="lazy" /></button>
+              <h3><span class="number">10.</span> Your turn!</h3>
+              <p>The owner calls, and the phone shows it instantly.</p>
+            </div>
+            <div class="phone-step">
+              <button class="zoom" type="button"><img src="images/10-shop-only.png" width="780" height="1560" alt="Shop only message" loading="lazy" /></button>
+              <h3><span class="number">11.</span> Shop-only mode</h3>
+              <p>The owner can allow joining only at the shop.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tinted" id="features">
+        <div class="wrap">
+          <p class="eyebrow">Features</p>
+          <h2>What the system does</h2>
+          <div class="grid cols-3">
+            <div class="card"><h3>QR code with share link</h3><p>Join at the shop by QR, or from home by link.</p></div>
+            <div class="card"><h3>Live position</h3><p>Position with estimated wait, updated instantly.</p></div>
+            <div class="card"><h3>Smart wait estimate</h3><p>Uses today's real service time, else the queue default.</p></div>
+            <div class="card"><h3>Owner controls</h3><p>Call next, skip, done, pause, close.</p></div>
+            <div class="card"><h3>Queue settings</h3><p>Block remote joins, or set a maximum queue size.</p></div>
+            <div class="card"><h3>Arrival check-in</h3><p><em>I'm here</em> marks a customer as present. QR joins check in automatically.</p></div>
+            <div class="card"><h3>Turn alerts</h3><p>Sent once when two people are ahead, again on your turn.</p></div>
+            <div class="card"><h3>Daily ticket numbers</h3><p>Numbers restart at 1 each day. Old tickets clear themselves.</p></div>
+            <div class="card"><h3>Automatic reconnect</h3><p>If the network drops, the page reconnects by itself.</p></div>
+          </div>
+
+          <p class="tour-title">Ticket life cycle</p>
+          <div class="lifecycle">
+            <span class="state">waiting</span>
+            <span class="arrow" aria-hidden="true">→</span>
+            <span class="state">called</span>
+            <span class="arrow" aria-hidden="true">→</span>
+            <span class="state end">done</span>
+          </div>
+          <p class="small-note">
+            A ticket can also leave the queue as <strong>skipped</strong> (by the owner) or
+            <strong>cancelled</strong> (by the customer, or automatically the next day).
+          </p>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <div class="wrap">
+          <p class="eyebrow">Architecture</p>
+          <h2>Three simple parts</h2>
+          <div class="arch-stage"><svg class="arch-svg arch-wide" viewBox="0 0 1120 540" role="img" aria-labelledby="arch-title"><title id="arch-title">QueueLess architecture: customers and owners use the React frontend, which calls the Go backend over HTTPS. The backend saves to PostgreSQL, then pushes live updates through the WebSocket hub.</title><defs><marker id="mw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0l10 5-10 5z" class="ah"/></marker><marker id="mhw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0l10 5-10 5z" class="ahh"/></marker><marker id="mw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" class="ah"/></marker></defs><rect class="stage" width="1120" height="540" rx="26"/><g class="device"><rect x="62" y="104" width="66" height="116" rx="13" class="frame"/><rect x="68" y="112" width="54" height="100" rx="7" class="screen"/><text x="95" y="160" class="dt">#32</text><text x="95" y="178" class="ds">Your turn!</text></g><text x="95" y="244" class="who">Customer</text><g class="device"><rect x="36" y="296" width="124" height="80" rx="9" class="frame"/><rect x="43" y="303" width="110" height="66" rx="4" class="screen"/><path d="M24 376h148l-9 12H33z" class="frame"/><text x="98" y="333" class="ds">Now serving</text><text x="98" y="352" class="dt">#28</text></g><text x="98" y="412" class="who">Shop Owner</text><g class="zone"><rect x="240" y="44" width="224" height="362" rx="22"/><text x="352.0" y="75" class="zt">Frontend</text><text x="352.0" y="93" class="zh">Vercel</text></g><g class="zone"><rect x="540" y="44" width="340" height="362" rx="22"/><text x="710.0" y="75" class="zt">Backend</text><text x="710.0" y="93" class="zh">Render</text></g><g class="zone"><rect x="960" y="44" width="136" height="362" rx="22"/><text x="1028.0" y="75" class="zt">Database</text><text x="1028.0" y="93" class="zh">Neon</text></g><g class="node hot"><rect x="258" y="104" width="188" height="54" rx="12"/><text x="352.0" y="128.0" class="t">React SPA</text><text x="352.0" y="145.0" class="s">TypeScript</text></g><g class="node"><rect x="258" y="168" width="188" height="54" rx="12"/><text x="352.0" y="192.0" class="t">Customer Views</text><text x="352.0" y="209.0" class="s">Join, Ticket, Alerts</text></g><g class="node"><rect x="258" y="232" width="188" height="54" rx="12"/><text x="352.0" y="256.0" class="t">Owner Dashboard</text><text x="352.0" y="273.0" class="s">Controls, QR, Stats</text></g><g class="node"><rect x="258" y="334" width="188" height="54" rx="12"/><text x="352.0" y="358.0" class="t">useQueueSocket</text><text x="352.0" y="375.0" class="s">Live update hook</text></g><g class="node"><rect x="558" y="104" width="148" height="54" rx="12"/><text x="632.0" y="128.0" class="t">REST API</text><text x="632.0" y="145.0" class="s">Chi router</text></g><g class="node"><rect x="558" y="178" width="148" height="54" rx="12"/><text x="632.0" y="202.0" class="t">Middleware</text><text x="632.0" y="219.0" class="s">JWT, CORS, Rate limit</text></g><g class="node"><rect x="558" y="252" width="148" height="54" rx="12"/><text x="632.0" y="276.0" class="t">Handlers</text><text x="632.0" y="293.0" class="s">Auth, Queues, Tickets</text></g><g class="node hot"><rect x="558" y="334" width="148" height="54" rx="12"/><text x="632.0" y="358.0" class="t">WebSocket Hub</text><text x="632.0" y="375.0" class="s">Goroutines</text></g><g class="node"><rect x="726" y="178" width="136" height="54" rx="12"/><text x="794.0" y="202.0" class="t">Queue Logic</text><text x="794.0" y="219.0" class="s">Position, ETA, Rules</text></g><g class="node"><rect x="726" y="252" width="136" height="54" rx="12"/><text x="794.0" y="276.0" class="t">Data Layer</text><text x="794.0" y="293.0" class="s">sqlc + pgx</text></g><g class="db"><path d="M978 128v120a50 14 0 0 0 100 0v-120"/><ellipse cx="1028" cy="128" rx="50" ry="14"/><text x="1028" y="196.0" class="t light">PostgreSQL</text><text x="1028" y="214.0" class="s light">Asia/Colombo</text></g><text x="1028" y="296" class="tbl">users</text><text x="1028" y="311" class="tbl">queues</text><text x="1028" y="326" class="tbl">tickets</text><text x="1028" y="341" class="tbl">password_resets</text><path d="M134 162H252" class="wire req" marker-end="url(#mw)"/><path d="M166 336H252" class="wire req" marker-end="url(#mw)"/><path d="M446 131H552" class="wire req" marker-end="url(#mw)"/><path d="M552 361H452" class="wire push" marker-end="url(#mhw)"/><path d="M632 158V172" class="wire req" marker-end="url(#mw)"/><path d="M632 232V246" class="wire req" marker-end="url(#mw)"/><path d="M632 306V328" class="wire push" marker-end="url(#mhw)"/><path d="M706 279H720" class="wire req" marker-end="url(#mw)"/><path d="M706 262Q716 262 716 240Q716 205 720 205" class="wire req" marker-end="url(#mw)"/><path d="M862 279H952" class="wire req" marker-end="url(#mw)"/><text x="499" y="112" class="lab">HTTPS</text><text x="499" y="127" class="lab">requests</text><text x="499" y="388" class="lab hot">WSS live</text><text x="499" y="403" class="lab hot">push</text><text x="684" y="322" class="lab small">Notify</text><text x="907" y="266" class="lab">SQL</text><g class="ci"><rect x="240" y="452" width="856" height="56" rx="16"/><text x="668" y="486" class="t">GitHub  →  GitHub Actions (Lint, Test, Build)  →  Auto-deploy from main</text></g><path d="M352 452V412" class="wire ci-line" marker-end="url(#mw)"/><path d="M710 452V412" class="wire ci-line" marker-end="url(#mw)"/></svg><svg class="arch-svg arch-tall" viewBox="0 0 360 956" role="img" aria-labelledby="arch-title-tall"><title id="arch-title-tall">QueueLess architecture diagram for small screens.</title><defs><marker id="mt" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0l10 5-10 5z" class="ah"/></marker><marker id="mht" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0l10 5-10 5z" class="ahh"/></marker></defs><rect class="stage" width="360" height="956" rx="22"/><g class="device"><rect x="70" y="20" width="66" height="116" rx="13" class="frame"/><rect x="76" y="28" width="54" height="100" rx="7" class="screen"/><text x="103" y="76" class="dt">#32</text><text x="103" y="94" class="ds">Your turn!</text></g><text x="103" y="158" class="who">Customer</text><g class="device"><rect x="190" y="36" width="124" height="80" rx="9" class="frame"/><rect x="197" y="43" width="110" height="66" rx="4" class="screen"/><path d="M178 116h148l-9 12H187z" class="frame"/><text x="252" y="73" class="ds">Now serving</text><text x="252" y="92" class="dt">#28</text></g><text x="252" y="158" class="who">Shop Owner</text><g class="zone"><rect x="18" y="190" width="324" height="226" rx="22"/><text x="180.0" y="221" class="zt">Frontend</text><text x="180.0" y="239" class="zh">Vercel</text></g><g class="node hot"><rect x="34" y="250" width="292" height="46" rx="12"/><text x="180.0" y="270.0" class="t">React SPA</text><text x="180.0" y="287.0" class="s">TypeScript</text></g><g class="node"><rect x="34" y="304" width="142" height="46" rx="12"/><text x="105.0" y="332.0" class="t">Customer Views</text></g><g class="node"><rect x="184" y="304" width="142" height="46" rx="12"/><text x="255.0" y="332.0" class="t">Owner Dashboard</text></g><g class="node"><rect x="34" y="358" width="292" height="44" rx="12"/><text x="180.0" y="377.0" class="t">useQueueSocket</text><text x="180.0" y="394.0" class="s">Live update hook</text></g><g class="zone"><rect x="18" y="500" width="324" height="228" rx="22"/><text x="180.0" y="531" class="zt">Backend</text><text x="180.0" y="549" class="zh">Render</text></g><g class="node"><rect x="34" y="560" width="142" height="46" rx="12"/><text x="105.0" y="580.0" class="t">REST API</text><text x="105.0" y="597.0" class="s">Chi router</text></g><g class="node"><rect x="184" y="560" width="142" height="46" rx="12"/><text x="255.0" y="580.0" class="t">Middleware</text><text x="255.0" y="597.0" class="s">JWT, CORS, Limits</text></g><g class="node"><rect x="34" y="614" width="142" height="46" rx="12"/><text x="105.0" y="642.0" class="t">Handlers</text></g><g class="node"><rect x="184" y="614" width="142" height="46" rx="12"/><text x="255.0" y="642.0" class="t">Queue Logic</text></g><g class="node hot"><rect x="34" y="668" width="142" height="46" rx="12"/><text x="105.0" y="696.0" class="t">WebSocket Hub</text></g><g class="node"><rect x="184" y="668" width="142" height="46" rx="12"/><text x="255.0" y="688.0" class="t">Data Layer</text><text x="255.0" y="705.0" class="s">sqlc + pgx</text></g><g class="zone"><rect x="18" y="776" width="324" height="160" rx="22"/><text x="180.0" y="807" class="zt">Database</text><text x="180.0" y="825" class="zh">Neon</text></g><g class="db"><path d="M48 842v52a62 14 0 0 0 124 0v-52"/><ellipse cx="110" cy="842" rx="62" ry="14"/><text x="110" y="876.0" class="t light">PostgreSQL</text><text x="110" y="894.0" class="s light">Asia/Colombo</text></g><text x="262" y="842" class="tbl">users</text><text x="262" y="857" class="tbl">queues</text><text x="262" y="872" class="tbl">tickets</text><text x="262" y="887" class="tbl">password_resets</text><path d="M103 166V186" class="wire req" marker-end="url(#mt)"/><path d="M252 166V186" class="wire req" marker-end="url(#mt)"/><path d="M130 420V494" class="wire req" marker-end="url(#mt)"/><path d="M232 496V424" class="wire push" marker-end="url(#mht)"/><path d="M255 732V770" class="wire req" marker-end="url(#mt)"/><text x="76" y="454" class="lab">HTTPS</text><text x="76" y="469" class="lab">requests</text><text x="290" y="454" class="lab hot">WSS</text><text x="290" y="469" class="lab hot">live push</text><text x="298" y="756" class="lab">SQL</text></svg></div>
+          <p class="ci-note">CI/CD: GitHub → GitHub Actions (Lint, Test, Build) → Auto-deploy from main</p>
+          <div class="grid cols-3">
+            <div class="card">
+              <h3>Frontend = the shop window</h3>
+              <p>Shows screens in the browser. It makes no decisions by itself.</p>
+            </div>
+            <div class="card">
+              <h3>Backend = the manager</h3>
+              <p>Checks every request, applies the rules, then tells all screens.</p>
+            </div>
+            <div class="card">
+              <h3>Database = the record book</h3>
+              <p>Keeps every owner, queue and ticket safely.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tinted" id="data-flow">
+        <div class="wrap">
+          <p class="eyebrow">Data Flow</p>
+          <h2>How one action reaches every screen</h2>
+          <div class="grid cols-3">
+            <div class="card flow">
+              <h3>A. Customer joins</h3>
+              <ol>
+                <li>Customer scans the <strong>QR code</strong></li>
+                <li>React sends the name to the <strong>REST API</strong></li>
+                <li>Go locks the queue, checks the rules, then saves a <strong>ticket</strong></li>
+                <li>The phone stores a secret <strong>ticket token</strong></li>
+                <li>The <strong>WebSocket hub</strong> broadcasts <code>queue_updated</code></li>
+              </ol>
+            </div>
+            <div class="card flow">
+              <h3>B. Owner calls next</h3>
+              <ol>
+                <li>Owner clicks <strong>Call next</strong>, sending the <strong>JWT</strong></li>
+                <li><strong>Middleware</strong> checks the token, then ownership</li>
+                <li>A <strong>database transaction</strong> marks the ticket <code>called</code></li>
+                <li>The hub broadcasts the change</li>
+                <li>The customer sees <strong>Your turn!</strong>, others move up</li>
+              </ol>
+            </div>
+            <div class="card flow">
+              <h3>C. Customer arrives</h3>
+              <ol>
+                <li>Remote customer reaches the shop</li>
+                <li>Taps <strong>I'm here</strong>, sending the ticket token</li>
+                <li>Go saves the <strong>check-in</strong> time once</li>
+                <li>The hub broadcasts the change</li>
+                <li>The owner sees a <strong>Here</strong> badge</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tech">
+        <div class="wrap">
+          <p class="eyebrow">Technology</p>
+          <h2>Built with free, open-source tools</h2>
+          <div class="grid cols-4">
+            <div class="card">
+              <p class="tech-group">Frontend</p>
+              <div class="chips"><span>React</span><span>TypeScript</span><span>Vite</span><span>React Router</span><span>TanStack Query</span><span>Tailwind CSS</span><span>qrcode.react</span></div>
+            </div>
+            <div class="card">
+              <p class="tech-group">Backend</p>
+              <div class="chips"><span>Go</span><span>Chi</span><span>gorilla/websocket</span><span>pgx</span><span>sqlc</span><span>golang-migrate</span><span>golang-jwt</span><span>bcrypt</span></div>
+            </div>
+            <div class="card">
+              <p class="tech-group">Data &amp; Testing</p>
+              <div class="chips"><span>PostgreSQL</span><span>Go testing</span><span>Vitest</span><span>Playwright</span></div>
+            </div>
+            <div class="card">
+              <p class="tech-group">DevOps</p>
+              <div class="chips"><span>Docker</span><span>Docker Compose</span><span>GitHub Actions</span><span>Vercel</span><span>Render</span><span>Neon</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tinted" id="security">
+        <div class="wrap">
+          <p class="eyebrow">Security</p>
+          <h2>How the system stays safe</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Risk</th><th>Protection</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><strong>Stolen passwords</strong></td><td>Hashed with bcrypt, never stored as plain text</td></tr>
+                <tr><td><strong>Owners touching other queues</strong></td><td>JWT check, then ownership check on every request</td></tr>
+                <tr><td><strong>Faking another ticket</strong></td><td>Each ticket has a secret token only its holder knows</td></tr>
+                <tr><td><strong>Password guessing, spam joins</strong></td><td>Rate limiting per IP</td></tr>
+                <tr><td><strong>Two customers, one number</strong></td><td>Database row locks in a transaction</td></tr>
+                <tr><td><strong>SQL injection</strong></td><td>Parameterized queries through sqlc</td></tr>
+                <tr><td><strong>Requests from other websites</strong></td><td>CORS, WebSocket origin checks</td></tr>
+                <tr><td><strong>Remote no-shows</strong></td><td>Shop-only mode, maximum queue size, arrival check-in</td></tr>
+                <tr><td><strong>Customer privacy</strong></td><td>Live broadcasts contain ticket numbers, never names</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap foot">
+        <a class="logo" href="#top"><img src="favicon.svg" alt="" /><b>Queue<span>Less</span></b></a>
+        <a href="https://github.com/vidurukalpana/QueueLess">Source on GitHub</a>
+      </div>
+    </footer>
+
+    <div class="lightbox" role="dialog" aria-modal="true" aria-label="Enlarged screenshot">
+      <button type="button" aria-label="Close">×</button>
+      <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="" />
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
