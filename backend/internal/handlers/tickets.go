@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -22,16 +24,21 @@ const (
 	statusCalled  = "called"
 	statusDone    = "done"
 	statusSkipped = "skipped"
+
+	queueStatusOpen       = "open"
+	maxCustomerNameLength = 40
 )
 
-// Tickets handles the owner's ticket controls.
+var errQueueNotOpen = errors.New("queue is not open")
+
+// Tickets handles queue tickets.
 type Tickets struct {
 	pool     *pgxpool.Pool
 	queries  *db.Queries
 	location *time.Location
 }
 
-// NewTickets creates the owner ticket handlers.
+// NewTickets creates the ticket handlers.
 func NewTickets(pool *pgxpool.Pool, queries *db.Queries, location *time.Location) *Tickets {
 	return &Tickets{pool: pool, queries: queries, location: location}
 }
@@ -47,6 +54,16 @@ type ownerTicketResponse struct {
 
 type callNextResponse struct {
 	Ticket *ownerTicketResponse `json:"ticket"`
+}
+
+type joinQueueRequest struct {
+	Name string `json:"name"`
+}
+
+type joinQueueResponse struct {
+	TicketID uuid.UUID `json:"ticketId"`
+	Number   int32     `json:"number"`
+	Token    uuid.UUID `json:"token"`
 }
 
 // List returns a queue's waiting or called tickets.
@@ -105,46 +122,123 @@ func (t *Tickets) CallNext(w http.ResponseWriter, r *http.Request) {
 }
 
 func (t *Tickets) callNext(ctx context.Context, queueID uuid.UUID) (*db.Ticket, error) {
+	var called *db.Ticket
+	err := t.inTx(ctx, func(queries *db.Queries) error {
+		// The row lock makes simultaneous calls run one at a time.
+		if _, err := queries.GetQueueForUpdate(ctx, queueID); err != nil {
+			return fmt.Errorf("lock queue: %w", err)
+		}
+		if err := queries.CancelStaleTickets(ctx, queueID); err != nil {
+			return fmt.Errorf("cancel stale: %w", err)
+		}
+		if err := queries.CompleteCalledTickets(ctx, queueID); err != nil {
+			return fmt.Errorf("complete called: %w", err)
+		}
+
+		next, err := queries.GetFirstWaitingTicket(ctx, queueID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("get first waiting: %w", err)
+		}
+
+		ticket, err := queries.UpdateTicketStatus(ctx, db.UpdateTicketStatusParams{ID: next.ID, Status: statusCalled})
+		if err != nil {
+			return fmt.Errorf("call ticket: %w", err)
+		}
+		called = &ticket
+		return nil
+	})
+	return called, err
+}
+
+// Join adds a customer to an open queue.
+func (t *Tickets) Join(w http.ResponseWriter, r *http.Request) {
+	queueID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+
+	var input joinQueueRequest
+	if err := httpx.DecodeJSON(w, r, &input); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	name := strings.TrimSpace(input.Name)
+	if length := utf8.RuneCountInString(name); length < 1 || length > maxCustomerNameLength {
+		httpx.WriteError(w, http.StatusBadRequest, "name must be 1 to 40 characters")
+		return
+	}
+
+	ticket, err := t.join(r.Context(), queueID, name)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+	case errors.Is(err, errQueueNotOpen):
+		httpx.WriteError(w, http.StatusConflict, "queue is not open")
+	case err != nil:
+		log.Printf("join queue: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
+	default:
+		httpx.WriteJSON(w, http.StatusCreated, joinQueueResponse{TicketID: ticket.ID, Number: ticket.Number, Token: ticket.Token})
+	}
+}
+
+func (t *Tickets) join(ctx context.Context, queueID uuid.UUID, name string) (db.Ticket, error) {
+	var ticket db.Ticket
+	err := t.inTx(ctx, func(queries *db.Queries) error {
+		// The row lock keeps ticket numbers unique when customers join together.
+		queue, err := queries.GetQueueForUpdate(ctx, queueID)
+		if err != nil {
+			return fmt.Errorf("lock queue: %w", err)
+		}
+		if queue.Status != queueStatusOpen {
+			return errQueueNotOpen
+		}
+		if err := queries.CancelStaleTickets(ctx, queueID); err != nil {
+			return fmt.Errorf("cancel stale: %w", err)
+		}
+
+		number, err := queries.NextTicketNumber(ctx, queueID)
+		if err != nil {
+			return fmt.Errorf("next ticket number: %w", err)
+		}
+
+		ticket, err = queries.CreateTicket(ctx, db.CreateTicketParams{
+			QueueID:      queueID,
+			Number:       number,
+			CustomerName: name,
+			Token:        uuid.New(),
+		})
+		if err != nil {
+			return fmt.Errorf("create ticket: %w", err)
+		}
+		return nil
+	})
+	return ticket, err
+}
+
+// inTx runs fn in a transaction, committing only when it succeeds.
+func (t *Tickets) inTx(ctx context.Context, fn func(queries *db.Queries) error) error {
 	tx, err := t.pool.Begin(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("begin: %w", err)
+		return fmt.Errorf("begin: %w", err)
 	}
 	defer func() {
 		if err := tx.Rollback(context.WithoutCancel(ctx)); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			log.Printf("call next: rollback: %v", err)
+			log.Printf("rollback: %v", err)
 		}
 	}()
-	queries := t.queries.WithTx(tx)
 
-	// The row lock makes simultaneous calls run one at a time.
-	if _, err := queries.GetQueueForUpdate(ctx, queueID); err != nil {
-		return nil, fmt.Errorf("lock queue: %w", err)
+	if err := fn(t.queries.WithTx(tx)); err != nil {
+		return err
 	}
-	if err := queries.CancelStaleTickets(ctx, queueID); err != nil {
-		return nil, fmt.Errorf("cancel stale: %w", err)
-	}
-	if err := queries.CompleteCalledTickets(ctx, queueID); err != nil {
-		return nil, fmt.Errorf("complete called: %w", err)
-	}
-
-	var called *db.Ticket
-	next, err := queries.GetFirstWaitingTicket(ctx, queueID)
-	switch {
-	case errors.Is(err, pgx.ErrNoRows):
-	case err != nil:
-		return nil, fmt.Errorf("get first waiting: %w", err)
-	default:
-		ticket, err := queries.UpdateTicketStatus(ctx, db.UpdateTicketStatusParams{ID: next.ID, Status: statusCalled})
-		if err != nil {
-			return nil, fmt.Errorf("call ticket: %w", err)
-		}
-		called = &ticket
-	}
-
 	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("commit: %w", err)
+		return fmt.Errorf("commit: %w", err)
 	}
-	return called, nil
+	return nil
 }
 
 // Skip removes a waiting or called ticket from the queue.

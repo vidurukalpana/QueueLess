@@ -58,6 +58,7 @@ func run() error {
 	router.Post("/api/auth/register", authHandler.Register)
 	router.Post("/api/auth/login", authHandler.Login)
 	router.Get("/api/queues/{id}", queueHandler.GetPublic)
+	router.Post("/api/queues/{id}/tickets", ticketHandler.Join)
 
 	router.Group(func(owner chi.Router) {
 		owner.Use(middleware.Authenticate(cfg.JWTSecret))
