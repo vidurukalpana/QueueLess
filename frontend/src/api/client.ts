@@ -1,6 +1,7 @@
-import type { ErrorResponse } from './types'
+import type { ErrorResponse, TicketStatusResponse } from './types'
 
 const baseUrl: string = import.meta.env.VITE_API_URL
+const NO_CONTENT = 204
 
 export class ApiError extends Error {
   readonly status: number
@@ -24,6 +25,9 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${baseUrl}${path}`, init)
   if (!response.ok) {
     throw new ApiError(response.status, await readErrorMessage(response))
+  }
+  if (response.status === NO_CONTENT) {
+    return undefined as T
   }
   return response.json() as Promise<T>
 }
@@ -63,6 +67,22 @@ export function apiPatch<T>(
   token?: string,
 ): Promise<T> {
   return sendJson<T>('PATCH', path, body, token)
+}
+
+export function getTicket(
+  ticketId: string,
+  token: string,
+): Promise<TicketStatusResponse> {
+  return request<TicketStatusResponse>(`/api/tickets/${ticketId}`, {
+    headers: { 'X-Ticket-Token': token },
+  })
+}
+
+export function cancelTicket(ticketId: string, token: string): Promise<void> {
+  return request<void>(`/api/tickets/${ticketId}`, {
+    method: 'DELETE',
+    headers: { 'X-Ticket-Token': token },
+  })
 }
 
 export function getErrorMessage(error: unknown): string {

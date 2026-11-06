@@ -11,6 +11,22 @@ import (
 	"github.com/google/uuid"
 )
 
+const averageServiceMinutesToday = `-- name: AverageServiceMinutesToday :one
+SELECT COALESCE(AVG(EXTRACT(EPOCH FROM done_at - called_at) / 60), 0)::float8 AS average_minutes
+FROM tickets
+WHERE queue_id = $1
+  AND ticket_date = CURRENT_DATE
+  AND status = 'done'
+  AND called_at IS NOT NULL
+`
+
+func (q *Queries) AverageServiceMinutesToday(ctx context.Context, queueID uuid.UUID) (float64, error) {
+	row := q.db.QueryRow(ctx, averageServiceMinutesToday, queueID)
+	var average_minutes float64
+	err := row.Scan(&average_minutes)
+	return average_minutes, err
+}
+
 const cancelStaleTickets = `-- name: CancelStaleTickets :exec
 UPDATE tickets
 SET status = 'cancelled'

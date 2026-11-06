@@ -3,10 +3,11 @@ import { ApiStatus } from './components/ApiStatus'
 import { OwnerLayout } from './components/OwnerLayout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { DashboardPage } from './pages/DashboardPage'
+import { JoinPage } from './pages/JoinPage'
 import { LoginPage } from './pages/LoginPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
 import { QueuePage } from './pages/QueuePage'
 import { RegisterPage } from './pages/RegisterPage'
+import { TicketPage } from './pages/TicketPage'
 
 export default function App() {
   return (
@@ -21,14 +22,8 @@ export default function App() {
             <Route path="/dashboard/queues/:id" element={<QueuePage />} />
           </Route>
         </Route>
-        <Route
-          path="/q/:queueId"
-          element={<PlaceholderPage title="Join queue" />}
-        />
-        <Route
-          path="/ticket/:ticketId"
-          element={<PlaceholderPage title="Ticket" />}
-        />
+        <Route path="/q/:queueId" element={<JoinPage />} />
+        <Route path="/ticket/:ticketId" element={<TicketPage />} />
       </Routes>
       <ApiStatus />
     </>
