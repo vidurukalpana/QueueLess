@@ -9,6 +9,7 @@ import {
 } from '../api/client'
 import { clearSavedTicket, findTicketToken } from '../api/ticketStorage'
 import type { TicketStatus } from '../api/types'
+import { ReconnectingBanner } from '../components/ReconnectingBanner'
 import { useQueueSocket } from '../hooks/useQueueSocket'
 
 const TURN_VIBRATION_MS = [200, 100, 200]
@@ -36,7 +37,7 @@ export function TicketPage() {
   const status = ticket.data?.status
   const previousStatus = useRef(status)
 
-  useQueueSocket(ticket.data?.queueId)
+  const { isReconnecting } = useQueueSocket(ticket.data?.queueId)
 
   useEffect(() => {
     const wasWaiting = previousStatus.current === 'waiting'
@@ -75,6 +76,7 @@ export function TicketPage() {
 
       {ticket.data && (
         <>
+          {isReconnecting && <ReconnectingBanner />}
           <p className="text-center text-sm text-gray-600">
             {ticket.data.queueName}
           </p>
