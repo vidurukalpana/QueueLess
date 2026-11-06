@@ -17,6 +17,7 @@ import (
 
 	"github.com/vidurukalpana/QueueLess/backend/internal/config"
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
+	"github.com/vidurukalpana/QueueLess/backend/internal/email"
 	"github.com/vidurukalpana/QueueLess/backend/internal/handlers"
 	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
 	"github.com/vidurukalpana/QueueLess/backend/internal/middleware"
@@ -66,13 +67,16 @@ func run() error {
 	router.Get("/health", handlers.Health(pool))
 
 	queries := db.New(pool)
-	authHandler := handlers.NewAuth(queries, cfg.JWTSecret)
+	sender := email.NewSender(cfg.ResendKey, cfg.EmailFrom)
+	authHandler := handlers.NewAuth(pool, queries, cfg.JWTSecret, sender, cfg.FrontendURL)
 	notifier := handlers.NewNotifier(queries, hub)
 	queueHandler := handlers.NewQueues(queries, cfg.Location, notifier)
 	ticketHandler := handlers.NewTickets(pool, queries, cfg.Location, notifier)
 	socketHandler := handlers.NewSocket(queries, hub)
 	router.Post("/api/auth/register", authHandler.Register)
 	router.With(middleware.RateLimit(loginsPerMinute)).Post("/api/auth/login", authHandler.Login)
+	router.With(middleware.RateLimit(loginsPerMinute)).Post("/api/auth/forgot-password", authHandler.ForgotPassword)
+	router.With(middleware.RateLimit(loginsPerMinute)).Post("/api/auth/reset-password", authHandler.ResetPassword)
 	router.Get("/api/queues/{id}", queueHandler.GetPublic)
 	router.With(middleware.RateLimit(joinsPerMinute)).Post("/api/queues/{id}/tickets", ticketHandler.Join)
 	router.Get("/api/tickets/{id}", ticketHandler.GetStatus)

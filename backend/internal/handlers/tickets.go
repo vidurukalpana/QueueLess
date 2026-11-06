@@ -134,7 +134,7 @@ func (t *Tickets) CallNext(w http.ResponseWriter, r *http.Request) {
 
 func (t *Tickets) callNext(ctx context.Context, queueID uuid.UUID) (*db.Ticket, error) {
 	var called *db.Ticket
-	err := t.inTx(ctx, func(queries *db.Queries) error {
+	err := inTx(ctx, t.pool, t.queries, func(queries *db.Queries) error {
 		// The row lock makes simultaneous calls run one at a time.
 		if _, err := queries.GetQueueForUpdate(ctx, queueID); err != nil {
 			return fmt.Errorf("lock queue: %w", err)
@@ -209,7 +209,7 @@ func (t *Tickets) Join(w http.ResponseWriter, r *http.Request) {
 
 func (t *Tickets) join(ctx context.Context, queueID uuid.UUID, name, code string) (db.Ticket, error) {
 	var ticket db.Ticket
-	err := t.inTx(ctx, func(queries *db.Queries) error {
+	err := inTx(ctx, t.pool, t.queries, func(queries *db.Queries) error {
 		// The row lock keeps ticket numbers unique when customers join together.
 		locked, err := queries.GetQueueForUpdate(ctx, queueID)
 		if err != nil {
@@ -260,27 +260,6 @@ func queueSettings(locked db.Queue) queue.Settings {
 		settings.MaxWaiting = &maxWaiting
 	}
 	return settings
-}
-
-// inTx runs fn in a transaction, committing only when it succeeds.
-func (t *Tickets) inTx(ctx context.Context, fn func(queries *db.Queries) error) error {
-	tx, err := t.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(context.WithoutCancel(ctx)); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			log.Printf("rollback: %v", err)
-		}
-	}()
-
-	if err := fn(t.queries.WithTx(tx)); err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit: %w", err)
-	}
-	return nil
 }
 
 // Skip removes a waiting or called ticket from the queue.

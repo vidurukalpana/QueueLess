@@ -8,9 +8,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/vidurukalpana/QueueLess/backend/internal/auth"
 	"github.com/vidurukalpana/QueueLess/backend/internal/db"
+	"github.com/vidurukalpana/QueueLess/backend/internal/email"
 	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
 	"github.com/vidurukalpana/QueueLess/backend/internal/middleware"
 	"github.com/vidurukalpana/QueueLess/backend/internal/validate"
@@ -23,13 +25,16 @@ const (
 
 // Auth handles owner accounts.
 type Auth struct {
-	queries   *db.Queries
-	jwtSecret string
+	pool        *pgxpool.Pool
+	queries     *db.Queries
+	jwtSecret   string
+	sender      email.Sender
+	frontendURL string
 }
 
 // NewAuth creates the owner account handlers.
-func NewAuth(queries *db.Queries, jwtSecret string) *Auth {
-	return &Auth{queries: queries, jwtSecret: jwtSecret}
+func NewAuth(pool *pgxpool.Pool, queries *db.Queries, jwtSecret string, sender email.Sender, frontendURL string) *Auth {
+	return &Auth{pool: pool, queries: queries, jwtSecret: jwtSecret, sender: sender, frontendURL: frontendURL}
 }
 
 type credentials struct {
@@ -54,7 +59,7 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email, ok := validate.Email(input.Email)
+	address, ok := validate.Email(input.Email)
 	if !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid email")
 		return
@@ -71,7 +76,7 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.queries.CreateUser(r.Context(), db.CreateUserParams{Email: email, PasswordHash: hash})
+	user, err := a.queries.CreateUser(r.Context(), db.CreateUserParams{Email: address, PasswordHash: hash})
 	if isUniqueViolation(err) {
 		httpx.WriteError(w, http.StatusConflict, "email already registered")
 		return
@@ -93,13 +98,13 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email, ok := validate.Email(input.Email)
+	address, ok := validate.Email(input.Email)
 	if !ok {
 		httpx.WriteError(w, http.StatusUnauthorized, invalidLoginMessage)
 		return
 	}
 
-	user, err := a.queries.GetUserByEmail(r.Context(), email)
+	user, err := a.queries.GetUserByEmail(r.Context(), address)
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusUnauthorized, invalidLoginMessage)
 		return

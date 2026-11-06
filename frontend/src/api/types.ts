@@ -12,6 +12,10 @@ export interface Owner {
   email: string
 }
 
+export interface MessageResponse {
+  message: string
+}
+
 export interface LoginResponse {
   token: string
 }
