@@ -10,6 +10,7 @@ import {
 } from '../api/client'
 import { clearSavedTicket, findTicketToken } from '../api/ticketStorage'
 import type { TicketStatus, TicketStatusResponse } from '../api/types'
+import { AlertPermission } from '../components/AlertPermission'
 import { ReconnectingBanner } from '../components/ReconnectingBanner'
 import { useQueueSocket } from '../hooks/useQueueSocket'
 
@@ -143,6 +144,7 @@ export function TicketPage() {
                 I'm here
               </button>
             ))}
+          {status === 'waiting' && <AlertPermission />}
           {checkIn.isError && (
             <p role="alert" className="text-center">
               {getErrorMessage(checkIn.error)}
