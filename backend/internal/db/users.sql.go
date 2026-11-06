@@ -11,6 +11,21 @@ import (
 	"github.com/google/uuid"
 )
 
+const createPasswordReset = `-- name: CreatePasswordReset :exec
+INSERT INTO password_resets (user_id, token_hash, expires_at)
+VALUES ($1, $2, now() + interval '1 hour')
+`
+
+type CreatePasswordResetParams struct {
+	UserID    uuid.UUID
+	TokenHash string
+}
+
+func (q *Queries) CreatePasswordReset(ctx context.Context, arg CreatePasswordResetParams) error {
+	_, err := q.db.Exec(ctx, createPasswordReset, arg.UserID, arg.TokenHash)
+	return err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, password_hash)
 VALUES ($1, $2)
@@ -32,6 +47,18 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const expirePasswordResets = `-- name: ExpirePasswordResets :exec
+UPDATE password_resets
+SET used_at = now()
+WHERE user_id = $1
+  AND used_at IS NULL
+`
+
+func (q *Queries) ExpirePasswordResets(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, expirePasswordResets, userID)
+	return err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
@@ -66,4 +93,42 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getValidPasswordReset = `-- name: GetValidPasswordReset :one
+SELECT id, user_id, token_hash, expires_at, used_at, created_at FROM password_resets
+WHERE token_hash = $1
+  AND used_at IS NULL
+  AND expires_at > now()
+FOR UPDATE
+`
+
+func (q *Queries) GetValidPasswordReset(ctx context.Context, tokenHash string) (PasswordReset, error) {
+	row := q.db.QueryRow(ctx, getValidPasswordReset, tokenHash)
+	var i PasswordReset
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :exec
+UPDATE users
+SET password_hash = $2
+WHERE id = $1
+`
+
+type UpdateUserPasswordParams struct {
+	ID           uuid.UUID
+	PasswordHash string
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
+	_, err := q.db.Exec(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
+	return err
 }

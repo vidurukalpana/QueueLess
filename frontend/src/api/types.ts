@@ -2,10 +2,6 @@ export interface ErrorResponse {
   error: string
 }
 
-export interface HealthResponse {
-  status: string
-}
-
 export interface Credentials {
   email: string
   password: string
@@ -14,6 +10,10 @@ export interface Credentials {
 export interface Owner {
   id: string
   email: string
+}
+
+export interface MessageResponse {
+  message: string
 }
 
 export interface LoginResponse {

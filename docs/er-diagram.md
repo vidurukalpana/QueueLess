@@ -5,12 +5,22 @@ Final schema for the MVP. Columns marked `step 9` are added by the second migrat
 ```mermaid
 erDiagram
     users ||--o{ queues : owns
+    users ||--o{ password_resets : requests
     queues ||--o{ tickets : contains
 
     users {
         uuid id PK
         text email UK
         text password_hash "bcrypt hash"
+        timestamptz created_at
+    }
+
+    password_resets {
+        uuid id PK
+        uuid user_id FK "references users.id"
+        text token_hash UK "SHA-256 of the emailed token"
+        timestamptz expires_at "1 hour after the request"
+        timestamptz used_at "nullable"
         timestamptz created_at
     }
 
@@ -47,6 +57,7 @@ erDiagram
 | --- | --- | --- | --- |
 | `users` | `queues` | One to zero or many | An owner can run many queues; each queue has exactly one owner. |
 | `queues` | `tickets` | One to zero or many | A queue holds many tickets; each ticket belongs to exactly one queue. |
+| `users` | `password_resets` | One to zero or many | An owner can request reset links; each link belongs to exactly one owner. |
 
 ## Constraints
 

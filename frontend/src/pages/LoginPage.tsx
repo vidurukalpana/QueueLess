@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 
 interface LoginLocationState {
   registered?: boolean
+  passwordReset?: boolean
 }
 
 export function LoginPage() {
@@ -29,14 +30,27 @@ export function LoginPage() {
       subtitle="Manage your shop's queue"
       submitLabel="Log in"
       isPending={mutation.isPending}
-      notice={state?.registered ? 'Account created. Please log in.' : undefined}
+      notice={
+        state?.registered
+          ? 'Account created. Please log in.'
+          : state?.passwordReset
+            ? 'Password changed. Please log in.'
+            : undefined
+      }
+      passwordHelp={
+        <p className="-mt-3 mb-4 text-sm">
+          <Link to="/forgot-password" className="text-brand-dark underline">
+            Forgot password?
+          </Link>
+        </p>
+      }
       error={mutation.isError ? getErrorMessage(mutation.error) : undefined}
       onSubmit={mutation.mutate}
       footer={
         <>
-          New here?{' '}
+          Don't have an account?{' '}
           <Link to="/register" className="underline">
-            Register
+            Create One
           </Link>
         </>
       }

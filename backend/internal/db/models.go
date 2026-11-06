@@ -11,6 +11,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type PasswordReset struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TokenHash string
+	ExpiresAt time.Time
+	UsedAt    *time.Time
+	CreatedAt time.Time
+}
+
 type Queue struct {
 	ID                uuid.UUID
 	OwnerID           uuid.UUID

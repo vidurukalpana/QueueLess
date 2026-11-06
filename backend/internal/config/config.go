@@ -13,6 +13,7 @@ const (
 	defaultPort        = "8080"
 	defaultTimezone    = "Asia/Colombo"
 	defaultFrontendURL = "http://localhost:5173"
+	defaultEmailFrom   = "QueueLess <onboarding@resend.dev>"
 	envFile            = "../.env"
 )
 
@@ -23,6 +24,8 @@ type Config struct {
 	FrontendURL string
 	DatabaseURL string
 	JWTSecret   string
+	ResendKey   string
+	EmailFrom   string
 }
 
 // Load reads the configuration from the environment.
@@ -55,6 +58,8 @@ func Load() (Config, error) {
 		FrontendURL: getEnv("FRONTEND_URL", defaultFrontendURL),
 		DatabaseURL: databaseURL,
 		JWTSecret:   jwtSecret,
+		ResendKey:   os.Getenv("RESEND_API_KEY"),
+		EmailFrom:   getEnv("EMAIL_FROM", defaultEmailFrom),
 	}, nil
 }
 
