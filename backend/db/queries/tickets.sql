@@ -48,3 +48,11 @@ WHERE queue_id = $1
 ORDER BY number
 LIMIT 1
 FOR UPDATE;
+
+-- name: AverageServiceMinutesToday :one
+SELECT COALESCE(AVG(EXTRACT(EPOCH FROM done_at - called_at) / 60), 0)::float8 AS average_minutes
+FROM tickets
+WHERE queue_id = $1
+  AND ticket_date = CURRENT_DATE
+  AND status = 'done'
+  AND called_at IS NOT NULL;
