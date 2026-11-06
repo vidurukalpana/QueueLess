@@ -75,6 +75,7 @@ func run() error {
 		owner.Post("/api/queues", queueHandler.Create)
 		owner.Get("/api/queues", queueHandler.List)
 		owner.Patch("/api/queues/{id}", queueHandler.Update)
+		owner.Get("/api/queues/{id}/stats", queueHandler.Stats)
 		owner.Get("/api/queues/{id}/tickets", ticketHandler.List)
 		owner.Post("/api/queues/{id}/next", ticketHandler.CallNext)
 		owner.Post("/api/tickets/{id}/skip", ticketHandler.Skip)

@@ -88,3 +88,10 @@ export interface QueueUpdatedMessage {
 }
 
 export type ServerMessage = QueueUpdatedMessage
+
+export interface QueueStats {
+  served: number
+  skipped: number
+  avgWaitMinutes: number | null
+  avgServiceMinutes: number | null
+}
