@@ -67,19 +67,6 @@ func (q *Queries) CheckInTicket(ctx context.Context, id uuid.UUID) (Ticket, erro
 	return i, err
 }
 
-const completeCalledTickets = `-- name: CompleteCalledTickets :exec
-UPDATE tickets
-SET status = 'done',
-    done_at = now()
-WHERE queue_id = $1
-  AND status = 'called'
-`
-
-func (q *Queries) CompleteCalledTickets(ctx context.Context, queueID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, completeCalledTickets, queueID)
-	return err
-}
-
 const countWaitingTickets = `-- name: CountWaitingTickets :one
 SELECT COUNT(*)::int AS waiting
 FROM tickets
@@ -226,6 +213,22 @@ func (q *Queries) GetTicket(ctx context.Context, id uuid.UUID) (Ticket, error) {
 		&i.CheckedInAt,
 	)
 	return i, err
+}
+
+const hasCalledTicket = `-- name: HasCalledTicket :one
+SELECT EXISTS (
+    SELECT 1
+    FROM tickets
+    WHERE queue_id = $1
+      AND status = 'called'
+) AS has_called
+`
+
+func (q *Queries) HasCalledTicket(ctx context.Context, queueID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasCalledTicket, queueID)
+	var has_called bool
+	err := row.Scan(&has_called)
+	return has_called, err
 }
 
 const listActiveTickets = `-- name: ListActiveTickets :many

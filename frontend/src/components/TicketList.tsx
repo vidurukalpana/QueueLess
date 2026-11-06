@@ -45,6 +45,7 @@ export function TicketList({ queueId }: TicketListProps) {
   })
 
   const nowServing = tickets.data?.find((ticket) => ticket.status === 'called')
+  const hasWaiting = tickets.data?.some((ticket) => ticket.status === 'waiting')
   const isBusy = callNext.isPending || changeTicket.isPending
   const actionError = callNext.error ?? changeTicket.error
 
@@ -61,10 +62,15 @@ export function TicketList({ queueId }: TicketListProps) {
                 ? `#${nowServing.number} ${nowServing.customerName}`
                 : 'Nobody'}
             </p>
+            {nowServing && (
+              <p className="mt-1 text-sm font-semibold">
+                Finish the current customer first
+              </p>
+            )}
           </div>
           <button
             type="button"
-            disabled={isBusy || !tickets.data?.length}
+            disabled={isBusy || Boolean(nowServing) || !hasWaiting}
             onClick={() => callNext.mutate()}
             className="btn min-h-12 bg-white px-6 text-base text-brand-dark shadow-lg hover:bg-orange-50"
           >
