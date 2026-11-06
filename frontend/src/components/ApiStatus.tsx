@@ -1,12 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
+import type { HealthResponse } from '../api/types'
 
 const WAKING_DELAY_MS = 2000
-
-interface HealthResponse {
-  status: string
-}
 
 export function ApiStatus() {
   const [isSlow, setIsSlow] = useState(false)

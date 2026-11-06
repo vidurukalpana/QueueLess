@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/vidurukalpana/QueueLess/backend/internal/httpx"
 )
 
 const healthTimeout = 2 * time.Second
@@ -23,17 +24,9 @@ func Health(database Pinger) http.HandlerFunc {
 
 		if err := database.Ping(ctx); err != nil {
 			log.Printf("health check: %v", err)
-			writeHealth(w, http.StatusServiceUnavailable, map[string]string{"error": "database unavailable"})
+			httpx.WriteError(w, http.StatusServiceUnavailable, "database unavailable")
 			return
 		}
-		writeHealth(w, http.StatusOK, map[string]string{"status": "ok"})
-	}
-}
-
-func writeHealth(w http.ResponseWriter, status int, body map[string]string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(body); err != nil {
-		log.Printf("write health response: %v", err)
+		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	}
 }

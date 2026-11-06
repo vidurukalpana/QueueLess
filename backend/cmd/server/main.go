@@ -51,6 +51,15 @@ func run() error {
 	router.Use(middleware.CORS(cfg.FrontendURL))
 	router.Get("/health", handlers.Health(pool))
 
+	authHandler := handlers.NewAuth(db.New(pool), cfg.JWTSecret)
+	router.Post("/api/auth/register", authHandler.Register)
+	router.Post("/api/auth/login", authHandler.Login)
+
+	router.Group(func(owner chi.Router) {
+		owner.Use(middleware.Authenticate(cfg.JWTSecret))
+		owner.Get("/api/auth/me", authHandler.Me)
+	})
+
 	server := &http.Server{
 		Addr:              net.JoinHostPort("0.0.0.0", cfg.Port),
 		Handler:           router,
