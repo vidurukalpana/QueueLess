@@ -28,15 +28,22 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
-export function apiGet<T>(path: string, token?: string): Promise<T> {
-  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
-  return request<T>(path, { headers })
+function authHeaders(token?: string): Record<string, string> {
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-export function apiPost<T>(path: string, body: unknown): Promise<T> {
+export function apiGet<T>(path: string, token?: string): Promise<T> {
+  return request<T>(path, { headers: authHeaders(token) })
+}
+
+export function apiPost<T>(
+  path: string,
+  body: unknown,
+  token?: string,
+): Promise<T> {
   return request<T>(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
     body: JSON.stringify(body),
   })
 }

@@ -19,3 +19,17 @@ export interface Owner {
 export interface LoginResponse {
   token: string
 }
+
+export type QueueStatus = 'open' | 'paused' | 'closed'
+
+export interface Queue {
+  id: string
+  name: string
+  status: QueueStatus
+  avgServiceMinutes: number
+  createdAt: string
+}
+
+export interface CreateQueueRequest {
+  name: string
+}
